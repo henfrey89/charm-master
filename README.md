@@ -47,6 +47,9 @@ A **quest** is a separate group running its own copy of the game: its own roster
 - **Retire or delete (quest admins):** the quest's Admin page has a **Retire or delete this quest** section, and both actions need the quest's admin PIN. *Retire* hides it from the Quests list but keeps all its data; tick **Show retired quests** on the Quests page to find it again, then **Restore quest** from its Admin page. *Delete quest* removes its roster, bracelets, grants, trades and the quest itself for good, and needs the quest name typed to confirm. The Original Quest cannot be retired or deleted from the app.
 - Not built: renaming a quest, and changing a quest's password.
 
+### Recent Deeds feed
+The home page has a **Recent Deeds** feed under the leaderboard: who gave whom which charm, with the reason and date, newest first, for the current round in your quest. It shows eight at a time with a Show more button. When granting, a tick-box **Show this on the team feed** (on by default) lets the giver keep a charm private. Private charms still reach the recipient's profile and still count for ranks, Most Generous and achievements; they just do not appear in the feed (stored as `priv: true` on the grant). Your profile's **Latest Deeds** is a separate personal list of charms you received.
+
 ### Achievements
 The profile page has an **Achievements** panel with nine goals, worked out from your activity in the current round, so they start again each month: First Charm, Open Hand (grant one), Thanked Five (grant to five different people), Well Loved (receive from three different people), Generous Soul (grant ten), Market Day (complete a swap), Nearly There (hold seven different charms), Set Complete and Charm Master. Locked ones show progress such as 2 / 5. They are calculated on the fly and nothing extra is stored.
 
@@ -128,7 +131,7 @@ A four-digit PIN chosen by the admins.
 |---|---|
 | `people/{id}` | `name`, `role` (`admin`/`member`), `rounds` (`{ "2026-11": true }`), `status` (`pending`/`active`), `requestedAt`, `welcomed` (round the tour was last shown), `pass` (`salt` and `hash` of the personal passcode) |
 | `cards/{YYYY-MM}__{personId}` | `roundId`, `personId`, `counts` (per charm), `sets` |
-| `grants/{id}` | `roundId`, `toId`, `byId`, `charm`, `reason`, `at` |
+| `grants/{id}` | `roundId`, `toId`, `byId`, `charm`, `reason`, `at`, optional `priv` (true hides it from the team feed) |
 | `trades/{id}` | `roundId`, `fromId`, `give`, `want`, `status` (`open`/`done`/`cancelled`/`void`), `toId`, `at`, `expiresAt`, `resolvedAt` |
 | `quests/{id}` | `name`, `nameLower`, `pass` (`salt`, `hash`), `createdAt` |
 | `<questId>~people`, `~cards`, `~trades`, `~grants`, `~_config` | The same collections as above and below, one set per quest. Data from before quests existed stays in the unprefixed collections (the Original Quest) |
@@ -173,14 +176,14 @@ Built and working:
 - Quests (several separate groups, each with its own admin, roster and progress)
 - **Most Generous** board and stat card on the home page
 - Open Market trading
-- Achievements and install-to-home-screen
+- Recent Deeds team feed (with a private option), achievements and install-to-home-screen
 - Guide page, welcome tour and music
 - Hosted on GitHub Pages with Firebase
 
 Not built yet:
 - **Hall of Fame and month-end rollover.** New months already start fresh because data is stored per round, but standings are not saved to a Hall of Fame. (The Guide's Rules tab already mentions it.)
 - Admin setup checklist and empty-state polish
-- Confetti and an activity feed
+- Confetti
 
 Everything was tested against a mock database in a browser, and the sign-in screen against the live Firebase project. Features beyond the sign-in screen have not been tried on the live database yet.
 

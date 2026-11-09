@@ -191,12 +191,13 @@ footer.ground { position: relative; border-top: 2px solid var(--bronze); backgro
 .note { font-size: 13px; font-style: italic; color: var(--muted); }
 
 /* Overview page: leaderboard and explanation */
-.home { display: grid; grid-template-columns: minmax(0, 1fr); grid-template-areas: "intro" "board" "gen"; gap: 24px; align-items: start; }
+.home { display: grid; grid-template-columns: minmax(0, 1fr); grid-template-areas: "intro" "board" "feed" "gen"; gap: 24px; align-items: start; }
 .home > section { min-width: 0; padding: 30px; display: flex; flex-direction: column; gap: 16px; }
 .home .intro { grid-area: intro; padding: 26px 30px; }
 .home .intro p { margin: 0; font-size: 17px; line-height: 1.6; max-width: 760px; }
 .home .board { grid-area: board; }
 .home .gen { grid-area: gen; }
+.home .feed { grid-area: feed; }
 .home .side { grid-area: side; padding: 20px 24px 26px; }
 .home .side .ttabs .ttab { padding: 0 12px; font-size: 13px; }
 .guidepage { padding: 14px 30px 30px; display: flex; flex-direction: column; gap: 20px; }
@@ -833,6 +834,7 @@ textarea.field { resize: vertical; min-height: 110px; }
           <textarea id="g-why" class="field" rows="4" maxlength="140" placeholder="Calmly ran the incident call and wrote it up the same day"></textarea>
           <div class="muted small">A short reason, shown next to the charm. <span id="g-count">0/140</span></div>
         </div>
+        <label class="muted small" style="display:flex; align-items:center; gap:8px"><input type="checkbox" id="g-pub" checked> Show this on the team feed. Untick to keep it between you and them.</label>
         <div class="actions">
           <button type="submit" class="btn" id="g-cast">Cast the charm</button>
           <span class="muted small">Random draw · equal odds for all 8</span>
@@ -868,6 +870,16 @@ textarea.field { resize: vertical; min-height: 110px; }
         </div>
         <div id="lb" style="display:flex; flex-direction:column; gap:10px"></div>
         <p class="empty-note">Ranked by sets completed, then by different charms held toward the next set. Lit gem = charm held.</p>
+      </section>
+      <section class="panel feed" id="feed-panel">
+        <div class="bracelet-head">
+          <h2 class="gtext">Recent Deeds</h2>
+          <div class="muted" style="font-size:14px">Who has been recognised · <span id="feed-month"></span></div>
+        </div>
+        <div class="rule"></div>
+        <div id="feed" style="display:flex; flex-direction:column; gap:14px"></div>
+        <div id="feed-more" style="display:flex; justify-content:center"></div>
+        <p class="empty-note">Charms that the giver chose to share with the team appear here.</p>
       </section>
       <section class="panel gen" id="gen-panel">
         <div class="bracelet-head">
@@ -1145,7 +1157,7 @@ textarea.field { resize: vertical; min-height: 110px; }
   
   function avatar(i, cls) { return '<svg class="av' + (cls ? ' ' + cls : '') + '" viewBox="0 0 120 120" aria-hidden="true">' + frame(i) + EMBLEM[i] + '</svg>'; }
   $('sprites').insertAdjacentHTML('beforeend', defs);
-  var achLast = '', lbLast = '', genLast = '', rankListBuilt = false;
+  var feedN = 8, feedLast = '', achLast = '', lbLast = '', genLast = '', rankListBuilt = false;
   var MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
   var TZ = 'Europe/London';
 
@@ -1312,7 +1324,7 @@ textarea.field { resize: vertical; min-height: 110px; }
   function sleep(ms) { return new Promise(function (r) { setTimeout(r, ms); }); }
 
   // Adds one charm to a card. A short lease keeps two simultaneous grants to the same person from overwriting each other.
-  function grantCharm(byId, toId, idx, why) {
+  function grantCharm(byId, toId, idx, why, priv) {
     var key = CHARMS[idx].k;
     var ref = S.db.doc('cards/' + CUR + '__' + toId);
     function lock(i) {
@@ -1338,7 +1350,8 @@ textarea.field { resize: vertical; min-height: 110px; }
       var body = { roundId: CUR, personId: toId, counts: counts, sets: sets };
       return s.exists ? ref.update(body) : ref.set(body);
     }).then(function () {
-      return S.db.collection('grants').add({ roundId: CUR, toId: toId, byId: byId, charm: key, reason: why, at: new Date().toISOString() })
+      var gdoc = { roundId: CUR, toId: toId, byId: byId, charm: key, reason: why, at: new Date().toISOString() }; if (priv) gdoc.priv = true;
+      return S.db.collection('grants').add(gdoc)
         .then(function () { return { noteFailed: false, done: done, sets: sets }; }, function () { return { noteFailed: true, done: done, sets: sets }; });
     });
   }
@@ -1477,6 +1490,16 @@ textarea.field { resize: vertical; min-height: 110px; }
         '<div class="lbscore" style="margin-left:auto"><strong>' + r.n + '</strong><span>' + (r.n === 1 ? 'charm granted' : 'charms granted') + '</span></div></div>';
     }).join('') : '<p class="empty-note">No charms have been granted in ' + esc(CUR_NAME) + ' yet. The first person to recognise a teammate takes the lead.</p>';
     if (genHtml !== genLast) { genLast = genHtml; $('gen').innerHTML = genHtml; }
+    // Recent deeds: every grant the giver chose to share, newest first.
+    var pubs = S.grants.filter(function (g) { return !g.priv; });
+    var feedHtml = pubs.slice(0, feedN).map(function (g) {
+      var c = charmByKey(g.charm), by = person(g.byId), to = person(g.toId);
+      var you = to && to.id === m.id, mine = by && by.id === m.id;
+      return '<div class="deed"><svg aria-hidden="true"><use href="#c-' + c.k + '"/></svg><div><b style="color:' + c.tint + '">' + esc(by ? (mine ? 'You' : by.name) : 'A teammate') + ' gave ' + esc(to ? (you ? 'you' : to.name) : 'a teammate') + ' a ' + c.name + '</b><span>' + esc(g.reason) + '</span><time>' + fmtDay(g.at) + '</time></div></div>';
+    }).join('') || '<p class="empty-note">No shared deeds in ' + esc(CUR_NAME) + ' yet. Be the first to recognise someone.</p>';
+    var moreHtml = pubs.length > feedN ? '<button type="button" class="btn2" data-act="feed-more">Show more (' + (pubs.length - feedN) + ' more)</button>' : '';
+    var fsig = feedHtml + '|' + moreHtml + '|' + m.id;
+    if (fsig !== feedLast) { feedLast = fsig; $('feed').innerHTML = feedHtml; $('feed-more').innerHTML = moreHtml; $('feed-month').textContent = CUR_LONG; }
     var granted = rows.reduce(function (s, r) { return s + r.total; }, 0);
     var best = rows.length ? rows[0] : null;
     var fulls = rows.reduce(function (s, r) { return s + r.sets; }, 0);
@@ -2636,7 +2659,7 @@ textarea.field { resize: vertical; min-height: 110px; }
       var idx = drawIndex(), started = Date.now();
       S.g = { phase: 'casting', pick: idx, toId: toId, why: why };
       renderStage();
-      return grantCharm(m.id, toId, idx, why).then(function (res) {
+      return grantCharm(m.id, toId, idx, why, !$('g-pub').checked).then(function (res) {
         return sleep(Math.max(0, 2600 - (Date.now() - started))).then(function () { S.g = { phase: 'reveal', pick: idx, toId: toId, why: why, note: res.noteFailed, done: res.done, sets: res.sets }; });
       }, function () {
         S.g = { phase: 'error' };
@@ -2776,6 +2799,8 @@ textarea.field { resize: vertical; min-height: 110px; }
     }).catch(function () { QA.busy = false; qaSay('That did not work. Check your connection and try again.', true); });
   });
 
+  $('feed-more').addEventListener('click', function (e) { if (e.target.closest('button[data-act="feed-more"]')) { feedN += 10; render(); } });
+
   // ---- Quests page ----
   function joinedMap() { try { return JSON.parse(lsGet('charm-master.joined') || '{}') || {}; } catch (e) { return {}; } }
   function markJoined(id) { var j = joinedMap(); j[id] = 1; try { localStorage.setItem('charm-master.joined', JSON.stringify(j)); } catch (e) {} }
@@ -2883,7 +2908,7 @@ textarea.field { resize: vertical; min-height: 110px; }
     db.collection('grants').where('roundId', '==', CUR).onSnapshot(function (snap) {
       S.grants = snap.docs.map(function (d) { return d.data() || {}; }).filter(function (g) {
         return g.toId && charmByKey(g.charm) && typeof g.at === 'string';
-      }).map(function (g) { return { toId: String(g.toId), byId: String(g.byId || ''), charm: g.charm, reason: String(g.reason || ''), at: g.at }; })
+      }).map(function (g) { return { toId: String(g.toId), byId: String(g.byId || ''), charm: g.charm, reason: String(g.reason || ''), at: g.at, priv: g.priv === true }; })
         .sort(function (a, b) { return a.at < b.at ? 1 : a.at > b.at ? -1 : 0; });
       render();
     }, function () {});
