@@ -883,6 +883,7 @@ textarea.field { resize: vertical; min-height: 110px; }
           <li>On the 1st, the final standings are saved to the Hall of Fame and every bracelet is cleared.</li>
           <li>Admins choose who is in each month's round.</li>
           <li>Each person can grant up to 3 charms a day. The count resets at midnight UK time.</li>
+          <li>Sign in with your own six-digit passcode. Forgotten it? Ask an admin to reset it.</li>
           <li>Trades are one-for-one, and an offer expires after 3 days.</li>
           <li>Every full set ranks you up and uses up one of each charm, so you can keep collecting.</li>
         </ul>
@@ -1137,14 +1138,15 @@ textarea.field { resize: vertical; min-height: 110px; }
   }
 
   // ---- data ----
-  function addPerson(name, role) {
+  function addPerson(name, role, pass) {
     name = String(name).trim().replace(/\s+/g, ' ');
     if (!name) return Promise.reject({ code: 'empty' });
     var lower = name.toLowerCase();
     if (S.people.some(function (p) { return p.name.toLowerCase() === lower; })) return Promise.reject({ code: 'duplicate' });
     var id = slug(name), rounds = {};
     rounds[CUR] = true; rounds[NEXT] = true;
-    return S.db.doc('people/' + id).set({ name: name, role: role, rounds: rounds }).then(function () { return id; });
+    var body = { name: name, role: role, rounds: rounds }; if (pass) body.pass = pass;
+    return S.db.doc('people/' + id).set(body).then(function () { return id; });
   }
   function watchCard() {
     var m = me(), want = m ? m.id : null;
@@ -1427,7 +1429,7 @@ textarea.field { resize: vertical; min-height: 110px; }
     if (S.pend && S.ready && !S.nodb && !S.err && !person(S.pend)) { S.pend = null; savePend(null); S.declined = true; }
     var list = S.people.filter(eligible);
     var pp = S.pend ? person(S.pend) : null;
-    var sig = [S.ready, S.nodb, S.err, S.people.length, list.map(function (p) { return p.id + p.name; }).join('|'), S.pend, pp && pp.status, S.declined, S.joinMsg].join('#');
+    var sig = [S.ready, S.nodb, S.err, S.people.length, list.map(function (p) { return p.id + p.name; }).join('|'), S.pend, pp && pp.status, S.declined, S.joinMsg, S.signin ? S.signin.id + S.signin.mode + S.signin.msg + S.signin.busy : ''].join('#');
     if (sig === gateSig) return;
     gateSig = sig;
     var copy = $('gate-copy'), body = $('gate-body');
@@ -1436,11 +1438,13 @@ textarea.field { resize: vertical; min-height: 110px; }
     if (S.err) { copy.textContent = 'The roster could not be loaded. Reload the page to try again.'; return; }
     if (!S.ready) { copy.textContent = 'Gathering the roster…'; return; }
     if (!S.people.length) {
-      copy.textContent = 'No one is on the roster yet. Enter your name to start it. You will be its first admin. Choose a four-digit admin PIN too: you will need it to make anyone else an admin.';
+      copy.textContent = 'No one is on the roster yet. Enter your name to start it. You will be its first admin. Choose a four-digit admin PIN (needed to make anyone else an admin) and your own six-digit passcode (needed to sign in as you).';
       body.innerHTML = '<form id="boot-form" class="inline-form" autocomplete="off" style="flex-wrap:wrap"><label class="sr" for="boot-name">Your name</label>' +
         '<input id="boot-name" class="field" type="text" maxlength="40" placeholder="Your name" required>' +
         '<label class="sr" for="boot-pin">Admin PIN, four digits</label><input id="boot-pin" class="field" type="password" inputmode="numeric" pattern="[0-9]*" maxlength="4" placeholder="Admin PIN" autocomplete="off" required style="max-width:140px">' +
         '<label class="sr" for="boot-pin2">Repeat the admin PIN</label><input id="boot-pin2" class="field" type="password" inputmode="numeric" pattern="[0-9]*" maxlength="4" placeholder="Repeat PIN" autocomplete="off" required style="max-width:140px">' +
+        '<label class="sr" for="boot-pass">Your own passcode, six digits</label><input id="boot-pass" class="field" type="password" inputmode="numeric" pattern="[0-9]*" maxlength="6" placeholder="Your passcode (6 digits)" autocomplete="off" required style="max-width:200px">' +
+        '<label class="sr" for="boot-pass2">Repeat your passcode</label><input id="boot-pass2" class="field" type="password" inputmode="numeric" pattern="[0-9]*" maxlength="6" placeholder="Repeat passcode" autocomplete="off" required style="max-width:170px">' +
         '<button type="submit" class="btn">Begin</button></form><div class="msg bad" id="boot-msg" role="alert"></div>';
       return;
     }
@@ -1449,14 +1453,29 @@ textarea.field { resize: vertical; min-height: 110px; }
       body.innerHTML = '<div class="tnote ok">Waiting for approval as <strong>' + esc(pp.name) + '</strong></div><div><button type="button" class="btn2" data-act="join-cancel">Cancel request</button></div>';
       return;
     }
+    if (S.signin && !person(S.signin.id)) S.signin = null;
+    if (S.signin) {
+      var sp = person(S.signin.id), setting = S.signin.mode === 'set';
+      copy.textContent = setting ? 'Hello ' + sp.name.split(' ')[0] + '. Choose a six-digit passcode. You will enter it each time you sign in as you, so nobody else can sign in as you.' : 'Welcome back, ' + sp.name.split(' ')[0] + '. Enter your six-digit passcode.';
+      body.innerHTML = '<form id="pass-form" class="inline-form" autocomplete="off" style="flex-wrap:wrap">' +
+        '<label class="sr" for="pass-1">' + (setting ? 'New passcode, six digits' : 'Passcode, six digits') + '</label><input id="pass-1" class="field" type="password" inputmode="numeric" pattern="[0-9]*" maxlength="6" placeholder="' + (setting ? 'New passcode' : 'Passcode') + '" autocomplete="off" required style="max-width:170px">' +
+        (setting ? '<label class="sr" for="pass-2">Repeat the passcode</label><input id="pass-2" class="field" type="password" inputmode="numeric" pattern="[0-9]*" maxlength="6" placeholder="Repeat passcode" autocomplete="off" required style="max-width:170px">' : '') +
+        '<button type="submit" class="btn"' + (S.signin.busy ? ' disabled' : '') + '>' + (setting ? 'Set passcode' : 'Sign in') + '</button>' +
+        '<button type="button" class="btn2" data-act="signin-back">Back</button></form>' +
+        '<div class="msg bad" role="alert">' + esc(S.signin.msg) + '</div>';
+      return;
+    }
     copy.textContent = list.length ? 'Pick your name to open your profile.' : 'Nobody is on the roster for ' + CUR_LONG + ' yet. Request to join and an admin will approve you.';
     body.innerHTML = (list.length ? '<div class="pick">' + list.map(function (p) {
       return '<button type="button" data-pick="' + esc(p.id) + '"><span class="ravatar" aria-hidden="true">' + esc(initials(p.name)) + '</span><span>' + esc(p.name) + '</span></button>';
     }).join('') + '</div>' : '') +
       (S.declined ? '<div class="warn">Your last request was not approved. Ask an admin if you think that was a mistake.</div>' : '') +
       '<div class="rule"></div><div class="eyebrow" style="font-size:13px">' + (list.length ? 'Not listed?' : 'New here?') + '</div>' +
-      '<form id="join-form" class="inline-form" autocomplete="off"><label class="sr" for="join-name">Your name</label>' +
-      '<input id="join-name" class="field" type="text" maxlength="40" placeholder="Your name" required><button type="submit" class="btn2">Request to join</button></form>' +
+      '<form id="join-form" class="inline-form" autocomplete="off" style="flex-wrap:wrap"><label class="sr" for="join-name">Your name</label>' +
+      '<input id="join-name" class="field" type="text" maxlength="40" placeholder="Your name" required>' +
+      '<label class="sr" for="join-pass">Choose a passcode, six digits</label><input id="join-pass" class="field" type="password" inputmode="numeric" pattern="[0-9]*" maxlength="6" placeholder="Passcode (6 digits)" autocomplete="off" required style="max-width:190px">' +
+      '<label class="sr" for="join-pass2">Repeat the passcode</label><input id="join-pass2" class="field" type="password" inputmode="numeric" pattern="[0-9]*" maxlength="6" placeholder="Repeat passcode" autocomplete="off" required style="max-width:170px">' +
+      '<button type="submit" class="btn2">Request to join</button></form>' +
       '<div class="msg bad" role="alert">' + esc(S.joinMsg) + '</div>';
   }
 
@@ -1560,6 +1579,20 @@ textarea.field { resize: vertical; min-height: 110px; }
       });
     }).catch(function () { pinMsg('The PIN could not be saved. Check your connection and try again.', true); }).then(function () { $('pin-save').disabled = false; });
   });
+  // ---- personal passcodes: six digits, set by each person, needed to sign in as them. Only a salted hash is stored. ----
+  function failK(k) { try { return JSON.parse(localStorage.getItem(k) || '{}') || {}; } catch (e) { return {}; } }
+  function lockLeftK(k) { var f = failK(k); return f.until && f.until > Date.now() ? Math.ceil((f.until - Date.now()) / 60000) : 0; }
+  function failedK(k) {
+    var f = failK(k), n = ((f.until && f.until <= Date.now()) ? 0 : (f.n || 0)) + 1;
+    try { localStorage.setItem(k, JSON.stringify(n >= 5 ? { n: 0, until: Date.now() + 10 * 60000 } : { n: n })); } catch (e) {}
+  }
+  function passedK(k) { try { localStorage.removeItem(k); } catch (e) {} }
+  function passKey(id) { return 'charm-master.passfail.' + id; }
+  function makePass(code) { var salt = newSalt(); return hashPin(salt, code).then(function (h) { return { salt: salt, hash: h }; }); }
+  function checkPass(p, code) {
+    if (!p || !p.pass || !/^\d{6}$/.test(code)) return Promise.resolve(false);
+    return hashPin(p.pass.salt, code).then(function (h) { return h === p.pass.hash; });
+  }
   var DEL = { id: '', busy: false };
   // Removes a person for good: their bracelets (all rounds), their open swap offers, then the person record.
   function deletePerson(p) {
@@ -1589,6 +1622,7 @@ textarea.field { resize: vertical; min-height: 110px; }
       return '<div class="rrow"><div class="rwho"><span class="ravatar" aria-hidden="true">' + esc(initials(p.name)) + '</span>' +
         '<div class="rname"><b>' + esc(p.name) + '</b><span style="display:flex; flex-wrap:wrap; align-items:center; gap:8px"><span class="chip' + (admin ? ' admin' : '') + '" style="display:inline-flex; align-items:center; cursor:default">' + (admin ? 'Admin' : 'Member') + '</span>' +
         '<button type="button" class="btn2" style="min-height:32px; padding:0 12px; font-size:12px" data-act="role" data-pid="' + esc(p.id) + '" aria-label="Make ' + esc(p.name) + (admin ? ' a member' : ' an admin') + '">' + (admin ? 'Make member' : 'Make admin') + '</button>' +
+        (p.pass ? '<button type="button" class="btn2" style="min-height:32px; padding:0 12px; font-size:12px" data-act="pass-reset" data-pid="' + esc(p.id) + '" aria-label="Reset the passcode for ' + esc(p.name) + '">Reset passcode</button>' : '<span class="muted" style="font-size:12px">No passcode yet</span>') +
         (p.id === S.me ? '' : '<button type="button" class="btn2 danger" style="min-height:32px; padding:0 12px; font-size:12px" data-act="del-ask" data-pid="' + esc(p.id) + '" aria-label="Remove ' + esc(p.name) + ' from Charm Master">Remove</button>') +
         '</span>' +
         (DEL.id === p.id ? '<div class="tnote" style="flex-direction:column; align-items:flex-start; margin-top:8px"><strong style="color:#ffb27a">Remove ' + esc(p.name) + ' for good?</strong>' +
@@ -2289,35 +2323,61 @@ textarea.field { resize: vertical; min-height: 110px; }
       var old = S.pend; S.pend = null; savePend(null); S.joinMsg = ''; gateSig = '';
       S.db.doc('people/' + old).delete().catch(function () {}); render(); return;
     }
+    if (e.target.closest('button[data-act="signin-back"]')) { S.signin = null; gateSig = ''; render(); return; }
     var b = e.target.closest('button[data-pick]');
     if (!b) return;
-    S.me = b.getAttribute('data-pick'); saveMe(S.me); location.hash = '#profile'; render();
+    var pid0 = b.getAttribute('data-pick'), pp0 = person(pid0);
+    if (!pp0) return;
+    S.signin = { id: pid0, mode: pp0.pass ? 'enter' : 'set', msg: '', busy: false }; gateSig = ''; render();
+    var f1 = $('pass-1'); if (f1) f1.focus();
   });
   $('gate-body').addEventListener('submit', function (e) {
     e.preventDefault();
     if (!S.db) return;
+    if (e.target.id === 'pass-form') {
+      var sg = S.signin, sp0 = sg && person(sg.id); if (!sp0 || sg.busy) return;
+      var k0 = passKey(sp0.id), c1 = $('pass-1').value, c2 = $('pass-2') ? $('pass-2').value : '';
+      function pfail(t) { sg.msg = t; sg.busy = false; gateSig = ''; render(); var f = $('pass-1'); if (f) f.focus(); }
+      function pin() { S.me = sp0.id; saveMe(sp0.id); S.signin = null; gateSig = ''; location.hash = '#profile'; render(); }
+      if (sg.mode === 'enter') {
+        if (lockLeftK(k0)) { pfail('Too many wrong tries. Try again in ' + lockLeftK(k0) + ' minute' + (lockLeftK(k0) === 1 ? '' : 's') + '.'); return; }
+        sg.busy = true;
+        checkPass(sp0, c1).then(function (ok) { if (!ok) { failedK(k0); pfail('That passcode is not right.'); return; } passedK(k0); pin(); });
+      } else {
+        if (!/^\d{6}$/.test(c1)) { pfail('The passcode must be exactly six digits.'); return; }
+        if (c1 !== c2) { pfail('The two passcodes do not match.'); return; }
+        sg.busy = true;
+        makePass(c1).then(function (ps) { return S.db.doc('people/' + sp0.id).update({ pass: ps }); }).then(pin, function () { pfail('That could not be saved. Check your connection and try again.'); });
+      }
+      return;
+    }
     if (e.target.id === 'join-form') {
       var jb = e.target.querySelector('button'), jn = $('join-name').value.trim().replace(/\s+/g, ' ');
       if (!jn) return;
+      var jp = $('join-pass').value, jp2 = $('join-pass2').value;
+      if (!/^\d{6}$/.test(jp)) { S.joinMsg = 'Choose a passcode of exactly six digits.'; gateSig = ''; render(); return; }
+      if (jp !== jp2) { S.joinMsg = 'The two passcodes do not match.'; gateSig = ''; render(); return; }
       if (S.people.some(function (p) { return p.name.toLowerCase() === jn.toLowerCase(); })) {
         S.joinMsg = 'That name is already on the roster or waiting for approval. Pick it from the list, or use your full name.'; gateSig = ''; render(); return;
       }
       jb.disabled = true;
       var jid = slug(jn);
-      S.db.doc('people/' + jid).set({ name: jn, role: 'member', rounds: {}, status: 'pending', requestedAt: new Date().toISOString() }).then(function () {
+      makePass(jp).then(function (ps) { return S.db.doc('people/' + jid).set({ name: jn, role: 'member', rounds: {}, status: 'pending', requestedAt: new Date().toISOString(), pass: ps }); }).then(function () {
         S.pend = jid; savePend(jid); S.declined = false; S.joinMsg = ''; gateSig = ''; render();
       }, function () { jb.disabled = false; S.joinMsg = 'That request could not be sent. Check your connection and try again.'; gateSig = ''; render(); });
       return;
     }
     var input = $('boot-name'), btn = e.target.querySelector('button'), bm = $('boot-msg');
-    var bp = $('boot-pin').value, bp2 = $('boot-pin2').value;
+    var bp = $('boot-pin').value, bp2 = $('boot-pin2').value, bq = $('boot-pass').value, bq2 = $('boot-pass2').value;
     if (!/^\d{4}$/.test(bp)) { bm.textContent = 'The admin PIN must be exactly four digits.'; return; }
     if (bp !== bp2) { bm.textContent = 'The two PINs do not match.'; return; }
+    if (!/^\d{6}$/.test(bq)) { bm.textContent = 'Your passcode must be exactly six digits.'; return; }
+    if (bq !== bq2) { bm.textContent = 'The two passcodes do not match.'; return; }
     bm.textContent = '';
     btn.disabled = true;
     var salt = newSalt();
     hashPin(salt, bp).then(function (h) { return S.db.doc('_config/adminpin').set({ salt: salt, hash: h, setAt: new Date().toISOString() }); })
-      .then(function () { return addPerson(input.value, 'admin'); })
+      .then(function () { return makePass(bq); }).then(function (ps) { return addPerson(input.value, 'admin', ps); })
       .then(function (id) { S.me = id; saveMe(id); location.hash = '#profile'; render(); })
       .catch(function () { btn.disabled = false; if (bm) bm.textContent = 'That could not be saved. Check your connection and try again.'; });
   });
@@ -2328,6 +2388,11 @@ textarea.field { resize: vertical; min-height: 110px; }
     if (!p) return;
     var act0 = b.getAttribute('data-act'), mm = me();
     if (act0 === 'role' && p.role !== 'admin') act0 = 'promo-ask';
+    if (act0 === 'pass-reset') {
+      if (!mm || mm.role !== 'admin' || b.disabled) return;
+      S.db.doc('people/' + p.id).update({ pass: null }).then(function () { say(p.name + "'s passcode was cleared. They choose a new one the next time they sign in."); }, function () { say('That could not be saved. Try again.', true); });
+      return;
+    }
     if (act0 === 'promo-ask' || act0 === 'promo-cancel' || act0 === 'promo-go') {
       if (!mm || mm.role !== 'admin' || b.disabled || PR.busy) return;
       if (act0 === 'promo-ask') {
@@ -2541,7 +2606,7 @@ textarea.field { resize: vertical; min-height: 110px; }
     db.collection('people').onSnapshot(function (snap) {
       S.people = snap.docs.map(function (d) {
         var x = d.data() || {};
-        return { id: d.id, name: String(x.name || 'Unnamed'), role: x.role === 'admin' ? 'admin' : 'member', rounds: (x.rounds && typeof x.rounds === 'object') ? x.rounds : {}, status: x.status === 'pending' ? 'pending' : 'active', requestedAt: String(x.requestedAt || ''), welcomed: String(x.welcomed || '') };
+        return { id: d.id, name: String(x.name || 'Unnamed'), role: x.role === 'admin' ? 'admin' : 'member', rounds: (x.rounds && typeof x.rounds === 'object') ? x.rounds : {}, status: x.status === 'pending' ? 'pending' : 'active', requestedAt: String(x.requestedAt || ''), welcomed: String(x.welcomed || ''), pass: (x.pass && typeof x.pass.salt === 'string' && typeof x.pass.hash === 'string') ? { salt: x.pass.salt, hash: x.pass.hash } : null };
       }).sort(function (a, b) { return a.name.localeCompare(b.name); });
       S.ready = true; render();
     }, function () { S.ready = true; S.err = true; render(); });

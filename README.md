@@ -52,11 +52,15 @@ A round is one UK calendar month (for example `2026-11`). Bracelets, ranks, gran
 
 ## Joining and sign-in
 
-There is no password. The sign-in screen is a pick-your-name list (trust-based).
+The sign-in screen is a pick-your-name list, and each name is protected by its own **six-digit passcode**.
 
-- **First run:** the very first person to enter a name becomes the admin and chooses the **admin PIN** at the same time.
-- **Everyone else:** requests to join with their name, and an admin approves or declines from the Admin page. Admins can also add people directly.
-- Anyone with the link can pick any name on the roster, so treat the link like a team-chat invite. See [Security model](#security-model).
+- **First run:** the very first person to enter a name becomes the admin. They choose the **admin PIN** (four digits) and their own passcode at the same time.
+- **Everyone else:** requests to join with a name and a passcode they choose, and an admin approves or declines from the Admin page. Admins can also add people directly.
+- **Signing in:** pick your name, then enter your passcode. On a name with no passcode yet (for example someone an admin added directly), the first person to pick it chooses one.
+- **Wrong tries:** after 5 wrong passcodes on a device, that name is locked on that device for 10 minutes.
+- **Forgotten passcode:** an admin presses **Reset passcode** next to the person on the Admin page, and the person chooses a new one next time they sign in.
+- Only a salted SHA-256 hash of each passcode is stored (`pass` on the person's record), never the digits.
+- Anyone with the link can still see the names on the roster. See [Security model](#security-model).
 
 ---
 
@@ -101,7 +105,7 @@ A four-digit PIN chosen by the admins.
 
 | Path | Contents |
 |---|---|
-| `people/{id}` | `name`, `role` (`admin`/`member`), `rounds` (`{ "2026-11": true }`), `status` (`pending`/`active`), `requestedAt`, `welcomed` (round the tour was last shown) |
+| `people/{id}` | `name`, `role` (`admin`/`member`), `rounds` (`{ "2026-11": true }`), `status` (`pending`/`active`), `requestedAt`, `welcomed` (round the tour was last shown), `pass` (`salt` and `hash` of the personal passcode) |
 | `cards/{YYYY-MM}__{personId}` | `roundId`, `personId`, `counts` (per charm), `sets` |
 | `grants/{id}` | `roundId`, `toId`, `byId`, `charm`, `reason`, `at` |
 | `trades/{id}` | `roundId`, `fromId`, `give`, `want`, `status` (`open`/`done`/`cancelled`/`void`), `toId`, `at`, `expiresAt`, `resolvedAt` |
@@ -130,9 +134,8 @@ When you change `firestore.rules` in this repo, also paste it into the Firebase 
 
 Charm Master is built to be trust-based, for a team that knows each other.
 
-- Anyone with the link can open the app and pick any name or ask to join. There are no passwords or personal accounts.
-- The admin PIN guards the **Make admin** button. It does not guard signing in as an existing admin: anyone could pick an admin's name on the sign-in screen.
-- The daily grant limit and the PIN lock-out are enforced by the app in the browser, not by the database. Someone technical could bypass them.
+- Anyone with the link can open the app, see the roster and ask to join. Signing in as a person needs their six-digit passcode, and making someone an admin needs the admin PIN.
+- These checks, the daily grant limit and the lock-outs run in the browser, not in the database. The stored hashes can be read by anyone who knows how to look, so a determined technical person could guess a six-digit passcode or bypass the checks. They stop casual impersonation, not a real attack. Proper accounts (for example Google sign-in) would be needed for that.
 - The Firebase web settings in `firebase-config.js` are public by design. Access is controlled by the Firestore rules.
 - Names and charm history live in your Firebase project, not on SolarEdge systems. Check with IT if that matters.
 
@@ -141,7 +144,7 @@ Charm Master is built to be trust-based, for a team that knows each other.
 ## Status
 
 Built and working:
-- Join requests, roster, remove people, admin PIN
+- Join requests, roster, remove people, admin PIN, personal passcodes
 - Granting with reveal animation and the daily limit
 - Bracelets, sets and ranks
 - Open Market trading
@@ -152,7 +155,6 @@ Not built yet:
 - **Hall of Fame and month-end rollover.** New months already start fresh because data is stored per round, but standings are not saved to a Hall of Fame. (The Guide's Rules tab already mentions it.)
 - Admin setup checklist and empty-state polish
 - Confetti and an activity feed
-- Asking for the admin PIN when signing in as an existing admin
 
 Everything was tested against a mock database in a browser, and the sign-in screen against the live Firebase project. Features beyond the sign-in screen have not been tried on the live database yet.
 
