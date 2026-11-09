@@ -914,6 +914,21 @@ textarea.field { resize: vertical; min-height: 110px; }
       </form>
       <div class="msg" id="admin-msg" role="status" aria-live="polite"></div>
     </section>
+    <section class="panel roster" id="pin-panel" style="margin-top:28px">
+      <div class="eyebrow">Security</div>
+      <h2 class="gtext" style="font-size:28px; margin:0">Admin PIN</h2>
+      <p class="muted" id="pin-desc">Choose a four-digit PIN. Anyone who tries to make someone an admin must enter it first.</p>
+      <form id="pin-form" class="inline-form" autocomplete="off" style="flex-wrap:wrap">
+        <div id="pin-cur-wrap" hidden style="display:contents"><label class="sr" for="pin-cur">Current PIN</label>
+        <input id="pin-cur" class="field" type="password" inputmode="numeric" pattern="[0-9]*" maxlength="4" placeholder="Current PIN" autocomplete="off" style="max-width:160px"></div>
+        <label class="sr" for="pin-new">New PIN</label>
+        <input id="pin-new" class="field" type="password" inputmode="numeric" pattern="[0-9]*" maxlength="4" placeholder="New PIN" autocomplete="off" style="max-width:160px">
+        <label class="sr" for="pin-new2">Repeat new PIN</label>
+        <input id="pin-new2" class="field" type="password" inputmode="numeric" pattern="[0-9]*" maxlength="4" placeholder="Repeat PIN" autocomplete="off" style="max-width:160px">
+        <button type="submit" class="btn" id="pin-save">Set PIN</button>
+      </form>
+      <div class="msg" id="pin-msg" role="status" aria-live="polite"></div>
+    </section>
     <section class="panel roster danger" id="wipe-panel" style="margin-top:28px">
       <div class="eyebrow">Start again</div>
       <h2 class="gtext" style="font-size:28px; margin:0">Wipe this round</h2>
@@ -1487,6 +1502,61 @@ textarea.field { resize: vertical; min-height: 110px; }
     renderDeeds(m);
   }
 
+  // ---- admin PIN: a four-digit PIN the admins choose, needed to make anyone an admin. Only a salted hash is stored. ----
+  var PR = { id: '', busy: false, msg: '' };
+  function pinFailState() { try { return JSON.parse(localStorage.getItem('charm-master.pinfail') || '{}') || {}; } catch (e) { return {}; } }
+  function pinLockLeft() { var f = pinFailState(); return f.until && f.until > Date.now() ? Math.ceil((f.until - Date.now()) / 60000) : 0; }
+  function pinFailed() {
+    var f = pinFailState(), n = ((f.until && f.until <= Date.now()) ? 0 : (f.n || 0)) + 1;
+    try { localStorage.setItem('charm-master.pinfail', JSON.stringify(n >= 5 ? { n: 0, until: Date.now() + 10 * 60000 } : { n: n })); } catch (e) {}
+  }
+  function pinPassed() { try { localStorage.removeItem('charm-master.pinfail'); } catch (e) {} }
+  function hashPin(salt, pin) {
+    var s = 'charm-master:' + salt + ':' + pin;
+    if (window.crypto && crypto.subtle && window.TextEncoder) {
+      return crypto.subtle.digest('SHA-256', new TextEncoder().encode(s)).then(function (b) {
+        return Array.prototype.map.call(new Uint8Array(b), function (x) { return ('0' + x.toString(16)).slice(-2); }).join('');
+      });
+    }
+    var h = 5381; for (var i = 0; i < s.length; i++) h = ((h * 33) ^ s.charCodeAt(i)) >>> 0;
+    return Promise.resolve('f' + h.toString(16));
+  }
+  function checkPin(pin) {
+    if (!S.pin || !/^\d{4}$/.test(pin)) return Promise.resolve(false);
+    return hashPin(S.pin.salt, pin).then(function (h) { return h === S.pin.hash; });
+  }
+  function newSalt() {
+    var a = new Uint8Array(12);
+    if (window.crypto && crypto.getRandomValues) crypto.getRandomValues(a); else for (var i = 0; i < a.length; i++) a[i] = Math.floor(Math.random() * 256);
+    return Array.prototype.map.call(a, function (x) { return ('0' + x.toString(16)).slice(-2); }).join('');
+  }
+  function pinMsg(t, bad) { var el = $('pin-msg'); el.textContent = t; el.className = 'msg' + (bad ? ' bad' : ''); }
+  function renderPin() {
+    $('pin-cur-wrap').hidden = !S.pin;
+    $('pin-cur-wrap').style.display = S.pin ? 'contents' : 'none';
+    $('pin-save').textContent = S.pin ? 'Change PIN' : 'Set PIN';
+    $('pin-desc').textContent = S.pin
+      ? 'A PIN is set. Anyone who tries to make someone an admin must enter it first. To change it, enter the current PIN and a new one.'
+      : 'No PIN is set yet, so nobody can be made an admin. Choose a four-digit PIN. Anyone who tries to make someone an admin must enter it first.';
+  }
+  $('pin-form').addEventListener('submit', function (e) {
+    e.preventDefault();
+    var m = me(); if (!m || m.role !== 'admin' || !S.db) return;
+    var cur = $('pin-cur').value, a = $('pin-new').value, b = $('pin-new2').value, had = !!S.pin;
+    if (pinLockLeft()) { pinMsg('Too many wrong tries. Try again in ' + pinLockLeft() + ' minute' + (pinLockLeft() === 1 ? '' : 's') + '.', true); return; }
+    if (!/^\d{4}$/.test(a)) { pinMsg('The PIN must be exactly four digits.', true); return; }
+    if (a !== b) { pinMsg('The two PINs do not match.', true); return; }
+    $('pin-save').disabled = true;
+    (had ? checkPin(cur) : Promise.resolve(true)).then(function (ok) {
+      if (!ok) { pinFailed(); pinMsg('The current PIN is wrong.', true); return; }
+      pinPassed();
+      var salt = newSalt();
+      return hashPin(salt, a).then(function (h) { return S.db.doc('_config/adminpin').set({ salt: salt, hash: h, setAt: new Date().toISOString() }); }).then(function () {
+        $('pin-cur').value = ''; $('pin-new').value = ''; $('pin-new2').value = '';
+        pinMsg(had ? 'PIN changed.' : 'PIN set. Remember it: you will need it to make anyone an admin.');
+      });
+    }).catch(function () { pinMsg('The PIN could not be saved. Check your connection and try again.', true); }).then(function () { $('pin-save').disabled = false; });
+  });
   var DEL = { id: '', busy: false };
   // Removes a person for good: their bracelets (all rounds), their open swap offers, then the person record.
   function deletePerson(p) {
@@ -1507,6 +1577,7 @@ textarea.field { resize: vertical; min-height: 110px; }
       return '<div class="rrow req"><div class="rwho"><span class="ravatar" aria-hidden="true">' + esc(initials(p.name)) + '</span><div class="rname"><b>' + esc(p.name) + '</b><span class="muted" style="font-size:13px">Asked ' + esc(fmtDay(p.requestedAt) || 'recently') + '</span></div></div>' +
         '<div class="reqbtns"><button type="button" class="btn" data-act="approve" data-pid="' + esc(p.id) + '">Approve</button><button type="button" class="btn2" data-act="decline" data-pid="' + esc(p.id) + '">Decline</button></div></div>';
     }).join('') + '</div>' : '';
+    var pe = $('promo-pin'), keepPin = pe ? { v: pe.value, f: document.activeElement === pe } : null;
     list.innerHTML = S.people.filter(function (p) { return p.status !== 'pending'; }).map(function (p) {
       var admin = p.role === 'admin';
       function sw(r, label) {
@@ -1521,9 +1592,16 @@ textarea.field { resize: vertical; min-height: 110px; }
           '<span>This deletes them from the roster, wipes their bracelets and withdraws their open swap offers. Charms already granted stay in the history. This cannot be undone.</span>' +
           '<span style="display:flex; flex-wrap:wrap; gap:12px"><button type="button" class="btn danger" data-act="del-go" data-pid="' + esc(p.id) + '"' + (DEL.busy ? ' disabled' : '') + '>' + (DEL.busy ? 'Removing…' : 'Yes, remove ' + esc(p.name)) + '</button>' +
           '<button type="button" class="btn2" data-act="del-cancel" data-pid="' + esc(p.id) + '"' + (DEL.busy ? ' disabled' : '') + '>Keep them</button></span></div>' : '') +
+        (PR.id === p.id ? '<div class="tnote" style="flex-direction:column; align-items:flex-start; margin-top:8px"><strong style="color:var(--gold-hi)">Enter the admin PIN to make ' + esc(p.name) + ' an admin</strong>' +
+          '<span style="display:flex; flex-wrap:wrap; align-items:center; gap:12px"><label class="sr" for="promo-pin">Admin PIN</label><input id="promo-pin" class="field" type="password" inputmode="numeric" pattern="[0-9]*" maxlength="4" placeholder="4-digit PIN" autocomplete="off" style="max-width:150px">' +
+          '<button type="button" class="btn" data-act="promo-go" data-pid="' + esc(p.id) + '"' + (PR.busy ? ' disabled' : '') + '>' + (PR.busy ? 'Checking…' : 'Make admin') + '</button>' +
+          '<button type="button" class="btn2" data-act="promo-cancel" data-pid="' + esc(p.id) + '"' + (PR.busy ? ' disabled' : '') + '>Cancel</button></span>' +
+          (PR.msg ? '<span style="color:#ffb27a" role="alert">' + esc(PR.msg) + '</span>' : '') + '</div>' : '') +
         '</div></div>' +
         sw(CUR, CUR_NAME) + sw(NEXT, NEXT_NAME) + '</div>';
     }).join('');
+    if (keepPin) { var np = $('promo-pin'); if (np) { np.value = keepPin.v; if (keepPin.f) np.focus(); } }
+    renderPin();
     renderWipe();
   }
 
@@ -2236,6 +2314,25 @@ textarea.field { resize: vertical; min-height: 110px; }
     var p = person(b.getAttribute('data-pid'));
     if (!p) return;
     var act0 = b.getAttribute('data-act'), mm = me();
+    if (act0 === 'role' && p.role !== 'admin') act0 = 'promo-ask';
+    if (act0 === 'promo-ask' || act0 === 'promo-cancel' || act0 === 'promo-go') {
+      if (!mm || mm.role !== 'admin' || b.disabled || PR.busy) return;
+      if (act0 === 'promo-ask') {
+        if (!S.pin) { say('Set an admin PIN first (in the Admin PIN section below), then you can make someone an admin.', true); return; }
+        PR.id = p.id; PR.msg = ''; DEL.id = ''; renderAdmin(); var ni = $('promo-pin'); if (ni) ni.focus();
+      } else if (act0 === 'promo-cancel') { PR.id = ''; PR.msg = ''; renderAdmin(); }
+      else {
+        var pv = ($('promo-pin') || {}).value || '';
+        if (pinLockLeft()) { PR.msg = 'Too many wrong tries. Try again in ' + pinLockLeft() + ' minute' + (pinLockLeft() === 1 ? '' : 's') + '.'; renderAdmin(); return; }
+        PR.busy = true; PR.msg = ''; renderAdmin();
+        checkPin(pv).then(function (ok) {
+          if (!ok) { pinFailed(); PR.busy = false; PR.msg = 'That PIN is not right.'; renderAdmin(); var n2 = $('promo-pin'); if (n2) n2.focus(); return; }
+          pinPassed();
+          return S.db.doc('people/' + p.id).update({ role: 'admin' }).then(function () { PR.busy = false; PR.id = ''; PR.msg = ''; render(); say(p.name + ' is now an admin.'); });
+        }).catch(function () { PR.busy = false; PR.msg = 'That could not be saved. Try again.'; renderAdmin(); });
+      }
+      return;
+    }
     if (act0 === 'del-ask' || act0 === 'del-cancel' || act0 === 'del-go') {
       if (!mm || mm.role !== 'admin' || b.disabled || DEL.busy) return;
       if (act0 === 'del-ask') { if (p.id === mm.id) return; DEL.id = p.id; renderAdmin(); }
@@ -2258,6 +2355,9 @@ textarea.field { resize: vertical; min-height: 110px; }
       if (p.role === 'admin' && admins < 2) { say('There must always be at least one admin.', true); return; }
       save(S.db.doc('people/' + p.id).update({ role: p.role === 'admin' ? 'member' : 'admin' }));
     }
+  });
+  $('roster-list').addEventListener('keydown', function (e) {
+    if (e.key === 'Enter' && e.target && e.target.id === 'promo-pin') { e.preventDefault(); var g = $('roster-list').querySelector('[data-act="promo-go"]'); if (g) g.click(); }
   });
   $('req-box').addEventListener('click', function (e) {
     var b = e.target.closest('button[data-act]'), m = me();
@@ -2419,6 +2519,11 @@ textarea.field { resize: vertical; min-height: 110px; }
       }).filter(function (t) { return t.fromId && charmByKey(t.give) && charmByKey(t.want); })
         .sort(function (a, b) { return a.at < b.at ? 1 : a.at > b.at ? -1 : 0; });
       render();
+    }, function () {});
+    db.doc('_config/adminpin').onSnapshot(function (s) {
+      var d = s && s.exists ? s.data() : null;
+      S.pin = (d && typeof d.salt === 'string' && typeof d.hash === 'string') ? { salt: d.salt, hash: d.hash } : null;
+      if (route() === 'admin') renderPin();
     }, function () {});
     db.collection('people').onSnapshot(function (snap) {
       S.people = snap.docs.map(function (d) {
