@@ -86,7 +86,7 @@ The **Admin** tab appears for admins only.
 - **Roster:** switch someone in or out of the current and next round, make an admin or member, or **Remove** someone completely.
 - **Remove:** deletes the person, their bracelets in every round and their open swap offers, after an "are you sure?" step. Charms already granted stay in the history, and old swaps show "A teammate". You cannot remove yourself or the last admin.
 - **Admin PIN:** see below.
-- **Wipe this round:** clears every bracelet, rank, granted charm and swap offer for the current month. The roster stays. It cannot be undone.
+- **Wipe progress in this quest:** clears every bracelet, rank, granted charm and swap offer for the current month, in this quest only. Other quests and other months are untouched, and the roster stays. It cannot be undone.
 - There must always be at least one admin.
 
 ### Admin PIN

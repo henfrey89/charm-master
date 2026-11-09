@@ -976,8 +976,8 @@ textarea.field { resize: vertical; min-height: 110px; }
     </section>
     <section class="panel roster danger" id="wipe-panel" style="margin-top:28px">
       <div class="eyebrow">Start again</div>
-      <h2 class="gtext" style="font-size:28px; margin:0">Wipe this round</h2>
-      <p class="muted">Clears every bracelet, rank, granted charm and swap offer for <span id="wipe-round"></span> so the round starts fresh. The roster stays exactly as it is. This cannot be undone.</p>
+      <h2 class="gtext" style="font-size:28px; margin:0" id="wipe-title">Wipe progress</h2>
+      <p class="muted">Clears every bracelet, rank, granted charm and swap offer for <span id="wipe-round"></span> in this quest only, so the round starts fresh. Other quests and other months are not touched, and the roster stays exactly as it is. This cannot be undone.</p>
       <div id="wipe-body" style="display:flex; flex-direction:column; gap:16px"></div>
       <div class="msg" id="wipe-msg" role="status" aria-live="polite"></div>
     </section>
@@ -1738,23 +1738,23 @@ textarea.field { resize: vertical; min-height: 110px; }
 
   var wipeSig = '';
   function renderWipe() {
-    $('wipe-round').textContent = CUR_LONG;
+    var qn = questName(QID); $('wipe-round').textContent = CUR_LONG + ' in ' + qn; $('wipe-title').textContent = 'Wipe progress in ' + qn;
     var W = S.wipe, nGrants = S.grants.length, nSets = 0, nCharms = 0, nTrades = S.trades.length;
     Object.keys(S.cards).forEach(function (id) {
       var e = S.cards[id]; nSets += e.sets || 0;
       CHARMS.forEach(function (c) { nCharms += cnt(e.counts, c.k); });
     });
-    var sig = [W.step, W.busy, W.msg, W.bad, nGrants, nSets, nCharms, nTrades].join('#');
+    var sig = [qn, W.step, W.busy, W.msg, W.bad, nGrants, nSets, nCharms, nTrades].join('#');
     if (sig === wipeSig) return;
     wipeSig = sig;
     var body = '';
     if (W.step === 0) {
-      body = '<div><button type="button" class="btn danger" data-act="wipe-ask">Wipe ' + esc(CUR_NAME) + '…</button></div>';
+      body = '<div><button type="button" class="btn danger" data-act="wipe-ask">Wipe progress in ' + esc(qn) + '…</button></div>';
     } else {
       body = '<div class="tnote" style="flex-direction:column; align-items:flex-start"><strong style="color:#ffb27a">Are you sure?</strong>' +
         '<span>This will permanently remove ' + nGrants + (nGrants === 1 ? ' granted charm' : ' granted charms') + ', ' + nSets + (nSets === 1 ? ' completed set' : ' completed sets') +
-        ' and ' + nTrades + (nTrades === 1 ? ' swap offer' : ' swap offers') + ' from ' + esc(CUR_LONG) + '. Everyone goes back to Wanderer with an empty bracelet.</span></div>' +
-        '<div style="display:flex; flex-wrap:wrap; gap:12px"><button type="button" class="btn danger" data-act="wipe-go"' + (W.busy ? ' disabled' : '') + '>' + (W.busy ? 'Wiping…' : 'Yes, wipe ' + esc(CUR_NAME)) + '</button>' +
+        ' and ' + nTrades + (nTrades === 1 ? ' swap offer' : ' swap offers') + ' from ' + esc(CUR_LONG) + ' in <strong>' + esc(qn) + '</strong>. Everyone goes back to Wanderer with an empty bracelet.</span></div>' +
+        '<div style="display:flex; flex-wrap:wrap; gap:12px"><button type="button" class="btn danger" data-act="wipe-go"' + (W.busy ? ' disabled' : '') + '>' + (W.busy ? 'Wiping…' : 'Yes, wipe ' + esc(qn)) + '</button>' +
         '<button type="button" class="btn2" data-act="wipe-cancel"' + (W.busy ? ' disabled' : '') + '>Keep everything</button></div>';
     }
     $('wipe-body').innerHTML = body;
