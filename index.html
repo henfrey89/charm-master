@@ -213,7 +213,11 @@ a.ttab { text-decoration: none; }
 .lbtools .field { width: 100%; }
 
 @media (max-width: 520px) { .home > section { padding: 20px; } }
-.lbstats { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; }
+.lbstats { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 12px; }
+.lbstats .lbstat { grid-column: span 2; }
+.lbstats .lbstat:nth-child(n+4) { grid-column: span 3; }
+@media (max-width: 700px) { .lbstats { grid-template-columns: repeat(2, minmax(0, 1fr)); } .lbstats .lbstat, .lbstats .lbstat:nth-child(n+4) { grid-column: span 1; } .lbstats .lbstat:last-child { grid-column: 1 / -1; } }
+@media (max-width: 520px) { .lbstats { grid-template-columns: minmax(0, 1fr); } .lbstats .lbstat, .lbstats .lbstat:nth-child(n+4), .lbstats .lbstat:last-child { grid-column: 1 / -1; } .bar .right { flex-wrap: wrap; justify-content: flex-end; margin-left: 0; width: 100%; } .qpill { max-width: 100%; } }
 .lbstat { position: relative; display: flex; align-items: center; gap: 14px; padding: 16px 18px; border: 1px solid rgba(232, 195, 106, 0.3); background: linear-gradient(180deg, rgba(232, 195, 106, 0.08), rgba(0, 0, 0, 0.45)); box-shadow: inset 0 1px 0 rgba(255, 240, 190, 0.12); min-width: 0; }
 .lbstat .gi { flex: 0 0 40px; width: 40px; height: 40px; border-radius: 50%; display: flex; align-items: center; justify-content: center; border: 1.5px solid currentColor; background: rgba(0, 0, 0, 0.45); }
 .lbstat .tx { min-width: 0; }
