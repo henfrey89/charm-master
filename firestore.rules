@@ -18,6 +18,7 @@ service cloud.firestore {
     // Quests: a registry of quests, plus one set of collections per quest, named "<questId>~people" and so on.
     match /quests/{id} {
       allow read: if signedIn();
+      allow delete: if signedIn();
       allow create, update: if signedIn() && request.resource.data.name is string
         && request.resource.data.name.size() >= 3 && request.resource.data.name.size() <= 40;
     }

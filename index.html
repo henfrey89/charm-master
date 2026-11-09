@@ -927,6 +927,7 @@ textarea.field { resize: vertical; min-height: 110px; }
       <p class="muted" id="q-copy">Each quest is its own group, with its own roster, admin and progress. Pick one to join with its password, or start your own below.</p>
       <label class="sr" for="q-search">Search quests</label>
       <input id="q-search" class="field" type="search" maxlength="40" placeholder="Search quests by name" autocomplete="off">
+      <label class="muted" style="display:flex; align-items:center; gap:8px; font-size:14px"><input type="checkbox" id="q-ret"> Show retired quests</label>
       <div id="q-list" style="display:flex; flex-direction:column; gap:10px"></div>
     </section>
     <section class="panel gate">
@@ -979,6 +980,13 @@ textarea.field { resize: vertical; min-height: 110px; }
       <p class="muted">Clears every bracelet, rank, granted charm and swap offer for <span id="wipe-round"></span> so the round starts fresh. The roster stays exactly as it is. This cannot be undone.</p>
       <div id="wipe-body" style="display:flex; flex-direction:column; gap:16px"></div>
       <div class="msg" id="wipe-msg" role="status" aria-live="polite"></div>
+    </section>
+    <section class="panel roster danger" id="quest-panel" style="margin-top:28px" hidden>
+      <div class="eyebrow">This quest</div>
+      <h2 class="gtext" style="font-size:28px; margin:0">Retire or delete this quest</h2>
+      <p class="muted" id="qa-desc"></p>
+      <div id="qa-body" style="display:flex; flex-direction:column; gap:16px"></div>
+      <div class="msg" id="qa-msg" role="status" aria-live="polite"></div>
     </section>
   </div>
 
@@ -1162,7 +1170,7 @@ textarea.field { resize: vertical; min-height: 110px; }
 
   var S = { db: null, ready: false, nodb: false, err: false, people: [], cards: {}, grants: [], trades: [], wipe: { step: 0, busy: false, msg: '', bad: false }, t: { give: '', want: '', busy: false, busyId: '', msg: '', bad: false, notice: null, open: false, tab: 'you', filter: '', shown: 12 }, g: { phase: 'idle' }, tour: { open: false, step: 0 }, tourAuto: false, me: loadMe(), pend: loadPend(), hd: { shown: 10, q: '' }, declined: false, joinMsg: '', counts: {}, mySets: 0, msg: '', bad: false };
   var unCard = null, cardFor = null, gateSig = '', msgTimer = null;
-  S.qs = { list: [], ready: false, q: '', open: '', msg: '', bad: false, busy: false }; var qSig = '';
+  S.qs = { list: [], ready: false, showRet: false, q: '', open: '', msg: '', bad: false, busy: false }; var qSig = '';
 
   function inRound(p, r) { return !!(p.rounds && p.rounds[r] === true); }
   function eligible(p) { return p.role === 'admin' || inRound(p, CUR); }
@@ -1256,6 +1264,7 @@ textarea.field { resize: vertical; min-height: 110px; }
     $('v-admin').hidden = !m || r !== 'admin';
     $('v-trade').hidden = !m || r !== 'trade';
     $('v-guide').hidden = !m || r !== 'guide';
+    renderQAdmin();
     var brand = document.querySelector('.brand');
     if (m && r === 'home') brand.setAttribute('aria-current', 'page'); else brand.removeAttribute('aria-current');
     var tabs = [['card', 'My Profile', 'profile'], ['grant', 'Grant'], ['trade', 'Trade'], ['guide', 'Guide'], ['quests', 'Quests']];
@@ -2654,6 +2663,71 @@ textarea.field { resize: vertical; min-height: 110px; }
   });
   setInterval(function () { if (me() && route() === 'trade') render(); }, 60000);
 
+  // ---- Retire / delete this quest (admin page) ----
+  var QA = { step: '', busy: false, msg: '', bad: false, nm: '' }, qaSig = '';
+  function curQuest() { return QID && QID !== 'main' ? S.qs.list.filter(function (x) { return x.id === QID; })[0] : null; }
+  function qaSay(t, bad) { QA.msg = t; QA.bad = !!bad; qaSig = ''; render(); }
+  function renderQAdmin() {
+    var q = curQuest(), panel = $('quest-panel');
+    panel.hidden = !q;
+    if (!q) return;
+    var sig = [q.id, q.name, q.retired, QA.step, QA.busy, QA.msg, QA.bad].join('#');
+    if (sig === qaSig) return;
+    qaSig = sig;
+    $('qa-desc').textContent = q.retired
+      ? q.name + ' is retired. It is hidden from the Quests list (unless "Show retired quests" is ticked) but nothing has been lost. Restore it any time, or delete it for good.'
+      : 'Retire hides ' + q.name + ' from the Quests list but keeps everything, and you can restore it later. Delete removes its roster, charms, trades and history for good.';
+    var pinf = '<label class="sr" for="qa-pin">Admin PIN</label><input id="qa-pin" class="field" type="password" inputmode="numeric" pattern="[0-9]*" maxlength="4" placeholder="Admin PIN" autocomplete="off" style="max-width:160px">';
+    var b = '';
+    if (QA.step === 'retire') b = '<form class="inline-form" data-qa="retire-go">' + pinf + '<button type="submit" class="btn"' + (QA.busy ? ' disabled' : '') + '>Retire quest</button><button type="button" class="btn2" data-qa="cancel">Cancel</button></form>';
+    else if (QA.step === 'delete') b = '<div class="tnote">This deletes everyone on the roster, all bracelets, grants and swaps in <strong>' + esc(q.name) + '</strong>, and the quest itself. It cannot be undone.</div>' +
+      '<form class="inline-form" data-qa="delete-go"><label class="sr" for="qa-name">Type the quest name to confirm</label><input id="qa-name" class="field" type="text" maxlength="40" placeholder="Type the quest name to confirm" autocomplete="off" value="' + esc(QA.nm || '') + '">' + pinf +
+      '<button type="submit" class="btn"' + (QA.busy ? ' disabled' : '') + '>Delete forever</button><button type="button" class="btn2" data-qa="cancel">Cancel</button></form>';
+    else b = '<div class="reqbtns">' + (q.retired ? '<button type="button" class="btn2" data-qa="restore"' + (QA.busy ? ' disabled' : '') + '>Restore quest</button>' : '<button type="button" class="btn2" data-qa="retire">Retire quest</button>') +
+      '<button type="button" class="btn2" data-qa="delete">Delete quest…</button></div>';
+    $('qa-body').innerHTML = b;
+    $('qa-msg').textContent = QA.msg; $('qa-msg').className = 'msg' + (QA.bad ? ' bad' : '');
+  }
+  function leaveQuest() {
+    try { localStorage.removeItem('charm-master.quest'); } catch (e) {}
+    location.hash = '#quests'; location.reload();
+  }
+  $('qa-body').addEventListener('input', function (e) { if (e.target.id === 'qa-name') QA.nm = e.target.value; });
+  $('qa-body').addEventListener('click', function (e) {
+    var b = e.target.closest('button[data-qa]'); if (!b || QA.busy) return;
+    var a = b.getAttribute('data-qa');
+    if (a === 'retire' || a === 'delete') { QA.step = a; QA.msg = ''; qaSig = ''; render(); return; }
+    if (a === 'cancel') { QA.step = ''; QA.msg = ''; qaSig = ''; render(); return; }
+    if (a === 'restore') {
+      QA.busy = true; qaSig = ''; render();
+      S.raw.doc('quests/' + QID).update({ retired: false }).then(function () { QA.busy = false; qaSay('Restored. ' + (curQuest() || {}).name + ' is back on the Quests list.'); },
+        function () { QA.busy = false; qaSay('That could not be saved. Try again.', true); });
+    }
+  });
+  $('qa-body').addEventListener('submit', function (e) {
+    e.preventDefault();
+    var f = e.target.closest('form[data-qa]'); if (!f || QA.busy) return;
+    var q = curQuest(); if (!q) return;
+    var a = f.getAttribute('data-qa'), pin = f.querySelector('#qa-pin').value, k = 'charm-master.qadminfail' + SFX;
+    var left = lockLeftK(k);
+    if (left) { qaSay('Too many wrong tries. Try again in ' + left + ' minute' + (left === 1 ? '' : 's') + '.', true); return; }
+    if (a === 'delete-go' && f.querySelector('#qa-name').value.trim().toLowerCase() !== q.name.toLowerCase()) { qaSay('Type the quest name exactly to confirm.', true); return; }
+    QA.busy = true; qaSig = ''; render();
+    checkPin(pin).then(function (ok) {
+      if (!ok) { failedK(k); QA.busy = false; qaSay('That is not the admin PIN.', true); return; }
+      passedK(k);
+      if (a === 'retire-go') {
+        return S.raw.doc('quests/' + QID).update({ retired: true, retiredAt: new Date().toISOString() }).then(leaveQuest);
+      }
+      var cols = ['people', 'cards', 'trades', 'grants', '_config'];
+      return Promise.all(cols.map(function (c) { return S.db.collection(c).get().then(function (sn) { return sn.docs.map(function (d) { return c + '/' + d.id; }); }); })).then(function (lists) {
+        var paths = [].concat.apply([], lists);
+        function chunk(i) { if (i >= paths.length) return Promise.resolve(); return Promise.all(paths.slice(i, i + 10).map(function (x) { return S.db.doc(x).delete(); })).then(function () { return chunk(i + 10); }); }
+        return chunk(0);
+      }).then(function () { return S.raw.doc('quests/' + QID).delete(); }).then(leaveQuest);
+    }).catch(function () { QA.busy = false; qaSay('That did not work. Check your connection and try again.', true); });
+  });
+
   // ---- Quests page ----
   function joinedMap() { try { return JSON.parse(lsGet('charm-master.joined') || '{}') || {}; } catch (e) { return {}; } }
   function markJoined(id) { var j = joinedMap(); j[id] = 1; try { localStorage.setItem('charm-master.joined', JSON.stringify(j)); } catch (e) {} }
@@ -2665,14 +2739,14 @@ textarea.field { resize: vertical; min-height: 110px; }
   }
   function renderQuests() {
     var Q = S.qs, j = joinedMap(), term = Q.q.trim().toLowerCase();
-    var sig = [Q.ready, S.nodb, Q.q, Q.open, Q.msg, Q.busy, QID, Object.keys(j).join(','), Q.list.map(function (x) { return x.id + x.name; }).join('|')].join('#');
+    var sig = [Q.ready, S.nodb, Q.showRet, Q.q, Q.open, Q.msg, Q.busy, QID, Object.keys(j).join(','), Q.list.map(function (x) { return x.id + x.name; }).join('|')].join('#');
     if (sig === qSig) return;
     qSig = sig;
     var el = $('q-list');
     $('q-new').style.display = S.nodb ? 'none' : '';
     if (S.nodb) { el.innerHTML = '<p class="muted">Saved data is not available in this view, so quests cannot load.</p>'; return; }
     if (!Q.ready) { el.innerHTML = '<p class="muted">Gathering the quests…</p>'; return; }
-    var rows = Q.list.filter(function (x) { return !term || x.name.toLowerCase().indexOf(term) >= 0; });
+    var rows = Q.list.filter(function (x) { return (Q.showRet || !x.retired || x.id === QID) && (!term || x.name.toLowerCase().indexOf(term) >= 0); });
     if (!rows.length) { el.innerHTML = '<p class="muted">' + (Q.list.length ? 'No quest matches that search.' : 'No quests yet. Start the first one below.') + '</p>'; return; }
     el.innerHTML = rows.map(function (x) {
       var cur = x.id === QID, joined = !!j[x.id] || cur;
@@ -2687,11 +2761,12 @@ textarea.field { resize: vertical; min-height: 110px; }
         '<button type="submit" class="btn"' + (Q.busy ? ' disabled' : '') + '>Enter quest</button>' +
         (Q.msg ? '<div class="msg bad" role="alert" style="flex-basis:100%">' + esc(Q.msg) + '</div>' : '') + '</form>' : '';
       return '<div class="qitem"><div class="lbrow' + (cur ? ' you' : '') + '"><div class="lbname"><div class="nm"><span class="t">' + esc(x.name) + '</span>' +
-        (cur ? '<span class="youtag">Current</span>' : joined ? '<span class="qtag">Joined</span>' : '') + '</div><span class="rtitle">' + esc(sub) + '</span></div>' +
+        (x.retired ? '<span class="qtag" style="color:#ffb27a;border-color:#8a5a2f">Retired</span>' : '') + (cur ? '<span class="youtag">Current</span>' : joined ? '<span class="qtag">Joined</span>' : '') + '</div><span class="rtitle">' + esc(sub) + '</span></div>' +
         '<div style="margin-left:auto">' + btn + '</div></div>' + form + '</div>';
     }).join('');
     if (Q.open) { var f = el.querySelector('.qform input'); if (f && document.activeElement !== f) { try { f.focus(); } catch (e) {} } }
   }
+  $('q-ret').addEventListener('change', function (e) { S.qs.showRet = e.target.checked; render(); });
   $('q-search').addEventListener('input', function (e) { S.qs.q = e.target.value; render(); });
   $('q-list').addEventListener('click', function (e) {
     var b = e.target.closest('button[data-qact]'); if (!b) return;
@@ -2739,7 +2814,7 @@ textarea.field { resize: vertical; min-height: 110px; }
     S.db = db;
     var legacy = false;
     function qlist(snap) {
-      var l = snap.docs.map(function (d) { var x = d.data() || {}; return { id: d.id, name: String(x.name || 'Quest'), createdAt: String(x.createdAt || ''), pass: (x.pass && typeof x.pass.salt === 'string' && typeof x.pass.hash === 'string') ? x.pass : null }; })
+      var l = snap.docs.map(function (d) { var x = d.data() || {}; return { retired: !!x.retired, id: d.id, name: String(x.name || 'Quest'), createdAt: String(x.createdAt || ''), pass: (x.pass && typeof x.pass.salt === 'string' && typeof x.pass.hash === 'string') ? x.pass : null }; })
         .filter(function (x) { return x.pass; });
       if (legacy) l.push({ id: 'main', name: 'Original Quest', createdAt: '', pass: null, nopass: true });
       S.qs.list = l.sort(function (a, b) { return a.name.localeCompare(b.name); });

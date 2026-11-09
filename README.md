@@ -44,7 +44,8 @@ A **quest** is a separate group running its own copy of the game: its own roster
 - **Original Quest:** data created before quests existed is shown as "Original Quest", with no quest password.
 - Quest passwords are stored as salted hashes in `quests/{id}`. Like the other checks they run in the browser, so they keep out casual visitors rather than determined attackers. Every quest name is visible to anyone with the link.
 - Each quest's data lives in collections named `<questId>~people`, `<questId>~cards` and so on. The Firestore rules cover these with a pattern, so **republish `firestore.rules` after updating**.
-- Not built: renaming or deleting a quest, and changing a quest's password.
+- **Retire or delete (quest admins):** the quest's Admin page has a **Retire or delete this quest** section, and both actions need the quest's admin PIN. *Retire* hides it from the Quests list but keeps all its data; tick **Show retired quests** on the Quests page to find it again, then **Restore quest** from its Admin page. *Delete quest* removes its roster, bracelets, grants, trades and the quest itself for good, and needs the quest name typed to confirm. The Original Quest cannot be retired or deleted from the app.
+- Not built: renaming a quest, and changing a quest's password.
 
 ### Rounds
 A round is one UK calendar month (for example `2026-11`). Bracelets, ranks, grants and trades are stored per round, so a new month starts with everyone as a Wanderer. Admins choose who is in the current and next month's round from the Admin page.
