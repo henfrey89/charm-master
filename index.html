@@ -1116,6 +1116,7 @@ footer.ground .gutter { align-items: center; row-gap: 8px; }
 
   <div class="gutter view" id="v-gate">
     <section class="panel gate">
+      <a class="linkbtn gate-back" href="#quests" style="align-self:flex-start; display:inline-flex; align-items:center; min-height:44px; margin: -8px 0 0 -4px">&larr; All quests</a>
       <div class="eyebrow">Charm Master · <span id="gate-round"></span></div>
       <h1 class="gtext">Who Goes There?</h1>
       <p class="muted" id="gate-copy">Gathering the roster…</p>
@@ -1478,7 +1479,13 @@ footer.ground .gutter { align-items: center; row-gap: 8px; }
     var q = S.qs.list.filter(function (x) { return x.id === id; })[0];
     return q ? q.name : (id === 'main' ? 'Original Quest' : 'Quest');
   }
+  function setPill() {
+    $('round-pill').innerHTML = CUR_SHORT + '<span class="pl-d"> · ' +
+      (DAYS_LEFT === 0 ? 'last day' : DAYS_LEFT === 1 ? '1 day left' : DAYS_LEFT + ' days left') + '</span><span class="pl-m"> · ' + DAYS_LEFT + 'd</span>';
+    $('round-pill').parentNode.title = CUR_LONG + ' round';
+  }
   function render() {
+    setPill();
     var pv = location.hash === '#privacy';
     $('v-privacy').hidden = !pv;
     var qv = !pv && (!QID || location.hash === '#quests');
