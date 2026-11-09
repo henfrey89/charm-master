@@ -1436,9 +1436,12 @@ textarea.field { resize: vertical; min-height: 110px; }
     if (S.err) { copy.textContent = 'The roster could not be loaded. Reload the page to try again.'; return; }
     if (!S.ready) { copy.textContent = 'Gathering the roster…'; return; }
     if (!S.people.length) {
-      copy.textContent = 'No one is on the roster yet. Enter your name to start it. You will be its first admin.';
-      body.innerHTML = '<form id="boot-form" class="inline-form" autocomplete="off"><label class="sr" for="boot-name">Your name</label>' +
-        '<input id="boot-name" class="field" type="text" maxlength="40" placeholder="Your name" required><button type="submit" class="btn">Begin</button></form>';
+      copy.textContent = 'No one is on the roster yet. Enter your name to start it. You will be its first admin. Choose a four-digit admin PIN too: you will need it to make anyone else an admin.';
+      body.innerHTML = '<form id="boot-form" class="inline-form" autocomplete="off" style="flex-wrap:wrap"><label class="sr" for="boot-name">Your name</label>' +
+        '<input id="boot-name" class="field" type="text" maxlength="40" placeholder="Your name" required>' +
+        '<label class="sr" for="boot-pin">Admin PIN, four digits</label><input id="boot-pin" class="field" type="password" inputmode="numeric" pattern="[0-9]*" maxlength="4" placeholder="Admin PIN" autocomplete="off" required style="max-width:140px">' +
+        '<label class="sr" for="boot-pin2">Repeat the admin PIN</label><input id="boot-pin2" class="field" type="password" inputmode="numeric" pattern="[0-9]*" maxlength="4" placeholder="Repeat PIN" autocomplete="off" required style="max-width:140px">' +
+        '<button type="submit" class="btn">Begin</button></form><div class="msg bad" id="boot-msg" role="alert"></div>';
       return;
     }
     if (pp && pp.status === 'pending') {
@@ -2303,10 +2306,17 @@ textarea.field { resize: vertical; min-height: 110px; }
       }, function () { jb.disabled = false; S.joinMsg = 'That request could not be sent. Check your connection and try again.'; gateSig = ''; render(); });
       return;
     }
-    var input = $('boot-name'), btn = e.target.querySelector('button');
+    var input = $('boot-name'), btn = e.target.querySelector('button'), bm = $('boot-msg');
+    var bp = $('boot-pin').value, bp2 = $('boot-pin2').value;
+    if (!/^\d{4}$/.test(bp)) { bm.textContent = 'The admin PIN must be exactly four digits.'; return; }
+    if (bp !== bp2) { bm.textContent = 'The two PINs do not match.'; return; }
+    bm.textContent = '';
     btn.disabled = true;
-    addPerson(input.value, 'admin').then(function (id) { S.me = id; saveMe(id); location.hash = '#profile'; render(); })
-      .catch(function () { btn.disabled = false; });
+    var salt = newSalt();
+    hashPin(salt, bp).then(function (h) { return S.db.doc('_config/adminpin').set({ salt: salt, hash: h, setAt: new Date().toISOString() }); })
+      .then(function () { return addPerson(input.value, 'admin'); })
+      .then(function (id) { S.me = id; saveMe(id); location.hash = '#profile'; render(); })
+      .catch(function () { btn.disabled = false; if (bm) bm.textContent = 'That could not be saved. Check your connection and try again.'; });
   });
   $('roster-list').addEventListener('click', function (e) {
     var b = e.target.closest('button[data-act]');
