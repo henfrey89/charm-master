@@ -153,6 +153,8 @@ Not built yet:
 - **Hall of Fame and month-end rollover.** New months already start fresh because data is stored per round, but standings are not saved to a Hall of Fame. (The Guide's Rules tab already mentions it.)
 - Admin setup checklist and empty-state polish
 - Confetti and an activity feed
+- **Quests:** running several separate groups at once. Each quest would have its own name, password, admin and PIN, its own roster and progress (nothing shared between quests), a Quests page to browse and join them with a switcher in the header, and personal passcodes per quest.
+- **"Most generous" board:** a tally of who has granted the most charms.
 
 Everything was tested against a mock database in a browser, and the sign-in screen against the live Firebase project. Features beyond the sign-in screen have not been tried on the live database yet.
 
