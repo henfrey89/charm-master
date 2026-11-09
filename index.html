@@ -675,7 +675,7 @@ textarea.field { resize: vertical; min-height: 110px; }
   .bar .gutter { gap: 8px 10px; }
 }
 /* ---- mobile: bottom tab bar ---- */
-.pl-m { display: none; }
+.pl-m, .state .ss { display: none; }
 #install, #install-tip { display: none !important; }
 @media (max-width: 760px) { body[data-route="home"] #install:not([hidden]), body[data-route="home"] #install-tip { display: inline !important; } }
 .tab .ti, .tab.mobonly { display: none; }
@@ -707,6 +707,30 @@ textarea.field { resize: vertical; min-height: 110px; }
   .lbstat .gi svg { width: 16px; height: 16px; }
   .lbstat strong { font-size: 20px; }
   .lbstat span.l { font-size: 10.5px; margin-top: 2px; }
+  /* profile: compact hero, 2-column bracelet, collapsible side panels */
+  .hero { padding: 18px; gap: 8px; }
+  .hero p { font-size: 15px; line-height: 1.5; }
+  .progress { padding: 16px; gap: 12px; }
+  .stat strong { font-size: 24px; }
+  .stats { gap: 24px; }
+  .bracelet { padding: 16px; gap: 14px; }
+  .side { gap: 12px; }
+  .deeds { padding: 16px; }
+  #grid.grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+  #grid .card { display: grid; grid-template-columns: 44px minmax(0, 1fr); grid-template-areas: "s n" "s t"; column-gap: 10px; row-gap: 0; align-items: center; text-align: left; padding: 8px 10px; }
+  #grid .card .socket { grid-area: s; width: 44px; height: 44px; border-width: 2px; }
+  #grid .card .charm { width: 30px; height: 30px; }
+  #grid .card .cname { grid-area: n; font-size: 14px; margin: 0; }
+  #grid .card .use { display: none; }
+  #grid .card .state { grid-area: t; font-size: 11px; line-height: 1.3; }
+  #grid .card .badge { top: 4px; right: 4px; min-width: 0; padding: 0 5px; font-size: 11px; }
+  .mcol > h2 { display: flex; align-items: center; justify-content: space-between; cursor: pointer; min-height: 32px; }
+  .mcol > h2::after { content: ""; width: 9px; height: 9px; border-right: 2px solid var(--gold); border-bottom: 2px solid var(--gold); transform: rotate(45deg); transition: transform .2s; margin-right: 4px; }
+  .mcol.open > h2::after { transform: rotate(225deg); }
+  .mcol:not(.open) > :not(h2):not(#ach-sub) { display: none !important; }
+  #grid .state .sl { display: none; }
+  #grid .state .ss { display: inline; }
+  .mcol:not(.open) { gap: 4px; }
   /* slim leaderboard rows */
   .lbrow { grid-template-columns: 30px 34px minmax(0, 1fr) auto; grid-template-areas: "rank av name score" "rank av gems score"; gap: 2px 10px; padding: 8px 12px; align-items: center; }
   .lbrow .rank { grid-area: rank; width: 30px; height: 30px; flex-basis: 30px; font-size: 14px; border-width: 1.5px; }
@@ -890,12 +914,12 @@ footer.ground .gutter { align-items: center; row-gap: 8px; }
             <div class="ladder" id="ladder"></div>
             <div class="minis" id="minis"></div>
           </div>
-          <div class="panel deeds achs" id="ach-panel">
+          <div class="panel deeds achs mcol" id="ach-panel">
             <h2 class="gtext" style="font-size:24px">Achievements</h2>
             <div class="muted" style="font-size:14px" id="ach-sub"></div>
             <div id="ach-list" style="display:flex; flex-direction:column; gap:12px"></div>
           </div>
-          <div class="panel deeds">
+          <div class="panel deeds mcol">
             <h2 class="gtext" style="font-size:24px">Latest Deeds</h2>
             <div id="deeds" style="display:flex; flex-direction:column; gap:14px"></div>
           </div>
@@ -1789,7 +1813,7 @@ footer.ground .gutter { align-items: center; row-gap: 8px; }
       var n = HAVE[c.k], has = n > 0;
       var state = n > 1 ? '<div class="state spare">' + (n - 1) + ' spare to trade</div>'
         : n === 1 ? '<div class="state eq">Equipped</div>'
-        : '<div class="state none">Not yet collected</div>';
+        : '<div class="state none"><span class="sl">Not yet collected</span><span class="ss">Missing</span></div>';
       return '<article class="card ' + (has ? 'has' : 'miss') + '" style="--glow:' + c.glow + '">' +
         (n > 1 ? '<div class="badge">×' + n + '</div>' : '') +
         '<div class="socket"><svg class="charm" style="animation-delay:' + (i * 0.35).toFixed(2) + 's" aria-hidden="true"><use href="#c-' + c.k + '"/></svg></div>' +
@@ -3081,6 +3105,23 @@ footer.ground .gutter { align-items: center; row-gap: 8px; }
     }, function () { S.ready = true; S.err = true; render(); });
     }
   }).catch(function () { S.ready = true; S.nodb = true; S.qs.ready = true; render(); });
+
+  // ---- phones: collapsible side panels on the profile ----
+  (function () {
+    var mq = window.matchMedia ? matchMedia('(max-width: 760px)') : { matches: false };
+    function heads() { return document.querySelectorAll('.mcol > h2'); }
+    function sync() {
+      Array.prototype.forEach.call(heads(), function (h) {
+        if (mq.matches) { h.setAttribute('role', 'button'); h.setAttribute('tabindex', '0'); h.setAttribute('aria-expanded', h.parentNode.classList.contains('open') ? 'true' : 'false'); }
+        else { h.removeAttribute('role'); h.removeAttribute('tabindex'); h.removeAttribute('aria-expanded'); }
+      });
+    }
+    function toggle(h) { if (!mq.matches) return; var p = h.parentNode; p.classList.toggle('open'); h.setAttribute('aria-expanded', p.classList.contains('open') ? 'true' : 'false'); }
+    document.addEventListener('click', function (e) { var h = e.target.closest && e.target.closest('.mcol > h2'); if (h) toggle(h); });
+    document.addEventListener('keydown', function (e) { if ((e.key === 'Enter' || e.key === ' ') && e.target.matches && e.target.matches('.mcol > h2')) { e.preventDefault(); toggle(e.target); } });
+    if (mq.addEventListener) mq.addEventListener('change', sync); else if (mq.addListener) mq.addListener(sync);
+    sync();
+  })();
 
   // ---- Install to home screen (standalone site only: needs the web manifest) ----
   (function () {
