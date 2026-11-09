@@ -31,6 +31,9 @@ Collecting all eight charms completes a set. A set uses up one of each charm (sp
 
 A set takes about 22 random draws on average without trading, so three sets in a month is a stretch goal for a busy team, and trading spares makes it easier. Each rank has its own animated medallion. The code still contains medallion designs for two further ranks (Adept and Archmage) that are not currently on the ladder.
 
+### Most Generous
+The home page shows a **Most Generous** board: the top five people by number of charms granted in the current round (ties share a position), plus a stat card naming the leader. It resets each month with the round.
+
 ### Rounds
 A round is one UK calendar month (for example `2026-11`). Bracelets, ranks, grants and trades are stored per round, so a new month starts with everyone as a Wanderer. Admins choose who is in the current and next month's round from the Admin page.
 
@@ -145,6 +148,7 @@ Built and working:
 - Join requests, roster, remove people, admin PIN, personal passcodes
 - Granting with reveal animation and the daily limit
 - Bracelets, sets and ranks
+- **Most Generous** board and stat card on the home page
 - Open Market trading
 - Guide page, welcome tour and music
 - Hosted on GitHub Pages with Firebase
@@ -154,7 +158,6 @@ Not built yet:
 - Admin setup checklist and empty-state polish
 - Confetti and an activity feed
 - **Quests:** running several separate groups at once. Each quest would have its own name, password, admin and PIN, its own roster and progress (nothing shared between quests), a Quests page to browse and join them with a switcher in the header, and personal passcodes per quest.
-- **"Most generous" board:** a tally of who has granted the most charms.
 
 Everything was tested against a mock database in a browser, and the sign-in screen against the live Firebase project. Features beyond the sign-in screen have not been tried on the live database yet.
 
