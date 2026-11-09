@@ -699,6 +699,28 @@ textarea.field { resize: vertical; min-height: 110px; }
   .bar .tabs .tab .dlong { display: none; }
   .bar .tabs .tab .dot { position: absolute; top: 6px; left: 54%; }
   body { padding-bottom: calc(72px + env(safe-area-inset-bottom, 0px)); }
+  /* swipeable stat strip */
+  .lbstats { display: flex; gap: 10px; overflow-x: auto; scroll-snap-type: x proximity; scrollbar-width: none; margin-inline: -4px; padding: 2px 4px 8px; }
+  .lbstats::-webkit-scrollbar { display: none; }
+  .lbstats .lbstat, .lbstats .lbstat:nth-child(n+4), .lbstats .lbstat:last-child { flex: 0 0 168px; scroll-snap-align: start; padding: 10px 12px; gap: 10px; }
+  .lbstat .gi { flex-basis: 32px; width: 32px; height: 32px; }
+  .lbstat .gi svg { width: 16px; height: 16px; }
+  .lbstat strong { font-size: 20px; }
+  .lbstat span.l { font-size: 10.5px; margin-top: 2px; }
+  /* slim leaderboard rows */
+  .lbrow { grid-template-columns: 30px 34px minmax(0, 1fr) auto; grid-template-areas: "rank av name score" "rank av gems score"; gap: 2px 10px; padding: 8px 12px; align-items: center; }
+  .lbrow .rank { grid-area: rank; width: 30px; height: 30px; flex-basis: 30px; font-size: 14px; border-width: 1.5px; }
+  .lbrow .lbav { grid-area: av; width: 34px; height: 34px; }
+  .lbrow .lbname { grid-area: name; flex-direction: row; align-items: baseline; gap: 6px; font-size: 15px; min-width: 0; }
+  .lbrow .lbname .rtitle { font-size: 11px; white-space: nowrap; flex: 0 0 auto; }
+  .lbrow .lbname .rtitle .rs { display: none; }
+  .lbrow .lbname .nm { flex: 1 1 auto; }
+  .lbrow .gems { grid-area: gems; order: 0; grid-column: auto; justify-content: flex-start; gap: 6px; padding: 5px 2px 2px; }
+  .lbrow .gem { width: 10px; height: 10px; border-width: 1.5px; }
+  .lbrow .lbscore { grid-area: score; order: 0; }
+  .lbrow .lbscore strong { font-size: 18px; }
+  .lbrow .lbscore span { font-size: 11px; white-space: nowrap; }
+  .lbrow:not(:has(.gems)) { grid-template-areas: "rank av name score"; }
 }
 footer.ground .gutter { align-items: center; row-gap: 8px; }
 .ground .flinks { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 18px; }
@@ -1642,7 +1664,7 @@ footer.ground .gutter { align-items: center; row-gap: 8px; }
         '<div class="rank">' + r.rank + '</div>' +
         '<div class="lbav">' + avatar(rankIdx(r.sets)) + '</div>' +
         '<div class="lbname"><div class="nm"><span class="t">' + esc(r.p.name) + '</span>' + (you ? '<span class="youtag">You</span>' : '') + '</div>' +
-        '<span class="rtitle">' + esc(rankFor(r.sets).name) + ' · ' + r.sets + (r.sets === 1 ? ' set' : ' sets') + '</span></div>' +
+        '<span class="rtitle">' + esc(rankFor(r.sets).name) + '<span class="rs"> · ' + r.sets + (r.sets === 1 ? ' set' : ' sets') + '</span></span></div>' +
         '<div class="gems" role="img" aria-label="' + esc(r.p.name) + ' holds ' + r.types + ' of 8 different charms">' +
         CHARMS.map(function (ch, i) { return '<div class="gem' + (r.has[i] ? ' on' : '') + '" style="--gc:' + ch.glow + '"></div>'; }).join('') + '</div>' +
         '<div class="lbscore"><strong>' + r.types + '/8</strong><span>' + r.total + ' charm' + (r.total === 1 ? '' : 's') + '</span></div></div>';
