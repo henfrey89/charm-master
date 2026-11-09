@@ -145,6 +145,13 @@ h2 { font-size: clamp(26px, 3vw, 32px); }
 .bracelet { grid-area: bracelet; min-width: 0; padding: 30px; display: flex; flex-direction: column; gap: 24px; }
 .side { grid-area: side; min-width: 0; display: flex; flex-direction: column; gap: 24px; }
 .deeds { flex: 1 1 auto; padding: 26px; display: flex; flex-direction: column; gap: 14px; }
+.achs .ach { display: flex; align-items: center; gap: 12px; padding-top: 10px; border-top: 1px solid rgba(232, 195, 106, 0.2); }
+.achs .ach .abadge { flex: 0 0 36px; width: 36px; height: 36px; border-radius: 50%; display: flex; align-items: center; justify-content: center; border: 1.5px solid #5a4a2a; color: #5a4a2a; }
+.achs .ach.on .abadge { border-color: #e8c36a; background: radial-gradient(circle at 50% 35%, #4a2a86, #1a0f2e); color: #ffd86b; box-shadow: 0 0 10px rgba(255, 216, 107, .45); }
+.achs .ach b { display: block; font-family: var(--display); font-size: 15px; }
+.achs .ach.off b { color: var(--muted); }
+.achs .ach span.d { display: block; font-size: 13px; line-height: 1.35; color: var(--muted); }
+.achs .ach .prog { margin-left: auto; font-family: var(--display); font-size: 13px; color: var(--muted); white-space: nowrap; }
 .deed { display: flex; align-items: center; gap: 14px; padding-top: 12px; border-top: 1px solid rgba(232, 195, 106, 0.2); }
 .deed svg { flex: 0 0 44px; width: 44px; height: 44px; }
 .deed b { display: block; font-family: var(--display); font-size: 15px; }
@@ -796,6 +803,11 @@ textarea.field { resize: vertical; min-height: 110px; }
             <div class="ladder" id="ladder"></div>
             <div class="minis" id="minis"></div>
           </div>
+          <div class="panel deeds achs" id="ach-panel">
+            <h2 class="gtext" style="font-size:24px">Achievements</h2>
+            <div class="muted" style="font-size:14px" id="ach-sub"></div>
+            <div id="ach-list" style="display:flex; flex-direction:column; gap:12px"></div>
+          </div>
           <div class="panel deeds">
             <h2 class="gtext" style="font-size:24px">Latest Deeds</h2>
             <div id="deeds" style="display:flex; flex-direction:column; gap:14px"></div>
@@ -1133,7 +1145,7 @@ textarea.field { resize: vertical; min-height: 110px; }
   
   function avatar(i, cls) { return '<svg class="av' + (cls ? ' ' + cls : '') + '" viewBox="0 0 120 120" aria-hidden="true">' + frame(i) + EMBLEM[i] + '</svg>'; }
   $('sprites').insertAdjacentHTML('beforeend', defs);
-  var lbLast = '', genLast = '', rankListBuilt = false;
+  var achLast = '', lbLast = '', genLast = '', rankListBuilt = false;
   var MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
   var TZ = 'Europe/London';
 
@@ -1619,6 +1631,39 @@ textarea.field { resize: vertical; min-height: 110px; }
       return '<svg class="mini' + (HAVE[c.k] ? '' : ' miss') + '" aria-hidden="true"><use href="#c-' + c.k + '"/></svg>';
     }).join('');
     renderDeeds(m);
+    renderAch(m, types);
+  }
+
+  // ---- achievements: worked out from this round's grants, trades and bracelet, so they reset with the round ----
+  function renderAch(m, types) {
+    var id = m.id, given = S.grants.filter(function (g) { return g.byId === id; }), got = S.grants.filter(function (g) { return g.toId === id; });
+    function uniq(list, k) { var o = {}; list.forEach(function (g) { if (g[k]) o[g[k]] = 1; }); return Object.keys(o).length; }
+    var toWho = uniq(given, 'toId'), fromWho = uniq(got, 'byId');
+    var trades = S.trades.filter(function (t) { return t.status === 'done' && (t.fromId === id || t.toId === id); }).length;
+    var top = LADDER[LADDER.length - 1].sets;
+    var L = [
+      ['First Charm', 'Receive your first charm.', got.length, 1],
+      ['Open Hand', 'Grant a charm to a teammate.', given.length, 1],
+      ['Thanked Five', 'Grant charms to five different people.', toWho, 5],
+      ['Well Loved', 'Receive charms from three different people.', fromWho, 3],
+      ['Generous Soul', 'Grant ten charms in one round.', given.length, 10],
+      ['Market Day', 'Complete a swap on the Open Market.', trades, 1],
+      ['Nearly There', 'Hold seven different charms at once.', types, 7],
+      ['Set Complete', 'Complete a full set of eight.', S.mySets, 1],
+      ['Charm Master', 'Reach the top rank.', S.mySets, top]
+    ];
+    var done = L.filter(function (a) { return a[2] >= a[3]; }).length;
+    var key = [id, done, L.map(function (a) { return Math.min(a[2], a[3]); }).join(',')].join('#');
+    if (key === achLast) return;
+    achLast = key;
+    $('ach-sub').textContent = done + ' of ' + L.length + ' earned in ' + CUR_NAME + '. They start again with each new round.';
+    $('ach-list').innerHTML = L.map(function (a) {
+      var on = a[2] >= a[3];
+      return '<div class="ach ' + (on ? 'on' : 'off') + '"><div class="abadge" aria-hidden="true"><svg width="18" height="18" viewBox="0 0 18 18">' +
+        (on ? '<path d="M3.5 9.5 L7.5 13.5 L14.5 4.5" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/>' : '<rect x="4.5" y="8" width="9" height="6.5" rx="1.2" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M6.5 8 V6.2 a2.5 2.5 0 0 1 5 0 V8" fill="none" stroke="currentColor" stroke-width="1.6"/>') +
+        '</svg></div><div><b>' + a[0] + '</b><span class="d">' + a[1] + '</span></div>' +
+        (on ? '<div class="prog" style="color:#9fe3b0">Earned</div>' : (a[3] > 1 ? '<div class="prog">' + a[2] + ' / ' + a[3] + '</div>' : '')) + '</div>';
+    }).join('');
   }
 
   // ---- admin PIN: a four-digit PIN the admins choose, needed to make anyone an admin. Only a salted hash is stored. ----

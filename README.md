@@ -47,6 +47,9 @@ A **quest** is a separate group running its own copy of the game: its own roster
 - **Retire or delete (quest admins):** the quest's Admin page has a **Retire or delete this quest** section, and both actions need the quest's admin PIN. *Retire* hides it from the Quests list but keeps all its data; tick **Show retired quests** on the Quests page to find it again, then **Restore quest** from its Admin page. *Delete quest* removes its roster, bracelets, grants, trades and the quest itself for good, and needs the quest name typed to confirm. The Original Quest cannot be retired or deleted from the app.
 - Not built: renaming a quest, and changing a quest's password.
 
+### Achievements
+The profile page has an **Achievements** panel with nine goals, worked out from your activity in the current round, so they start again each month: First Charm, Open Hand (grant one), Thanked Five (grant to five different people), Well Loved (receive from three different people), Generous Soul (grant ten), Market Day (complete a swap), Nearly There (hold seven different charms), Set Complete and Charm Master. Locked ones show progress such as 2 / 5. They are calculated on the fly and nothing extra is stored.
+
 ### Rounds
 A round is one UK calendar month (for example `2026-11`). Bracelets, ranks, grants and trades are stored per round, so a new month starts with everyone as a Wanderer. Admins choose who is in the current and next month's round from the Admin page.
 
@@ -170,6 +173,7 @@ Built and working:
 - Quests (several separate groups, each with its own admin, roster and progress)
 - **Most Generous** board and stat card on the home page
 - Open Market trading
+- Achievements and install-to-home-screen
 - Guide page, welcome tour and music
 - Hosted on GitHub Pages with Firebase
 
