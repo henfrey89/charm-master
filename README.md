@@ -2,7 +2,7 @@
 
 A medieval-style team rewards tool. Teammates grant each other random magic charms for good work, collect all eight to complete a set, and rank up from Wanderer to Charm Master. Rounds run for one UK calendar month.
 
-**Live site:** https://henfrey89.github.io/charm-master/
+**Live site:** https://charmmaster.henfrey.org/
 
 It is a static website (one `index.html`) backed by a Firebase Firestore database. There is no server to run.
 
