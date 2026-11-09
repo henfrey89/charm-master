@@ -649,6 +649,60 @@ textarea.field { resize: vertical; min-height: 110px; }
 .swaprow svg { width: 30px; height: 30px; flex: 0 0 auto; }
 .swaprow time { margin-left: auto; color: var(--muted); font-size: 13px; }
 @media (max-width: 520px) { .tform, .tpanel, .tside > .panel { padding: 20px; } .swap { padding: 16px; gap: 14px; } }
+
+/* ---- tidy header and footer ---- */
+.bar .gutter { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px; padding-block: 10px 0; }
+.bar .brand { order: 1; }
+.bar .right { order: 2; margin-left: auto; display: flex; align-items: center; gap: 10px; flex-wrap: nowrap; }
+.bar .tabs { order: 3; flex: 1 0 100%; flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; border-top: 1px solid rgba(232, 195, 106, 0.18); margin-top: 4px; }
+.bar .tabs::-webkit-scrollbar { display: none; }
+.bar .tabs:empty { display: none; }
+.bar .tab { white-space: nowrap; flex: 0 0 auto; }
+.bar .gutter:has(.tabs:empty) { padding-bottom: 10px; }
+@media (max-width: 760px) {
+  .bar .right { display: contents; }
+  .bar #snd { order: 2; margin-left: auto; }
+  .bar #help { order: 3; }
+  .bar #who { order: 4; }
+  .bar .tabs { order: 5; }
+  .bar #qbtn { order: 6; flex: 1 1 0; min-width: 0; text-align: center; }
+  .bar .right .pill:not(.qpill) { order: 7; flex: 1 1 0; min-width: 0; justify-content: center; }
+  .bar .gutter { padding-bottom: 10px; }
+  .bar .tab { padding: 0 9px; font-size: 12.5px; letter-spacing: 0.06em; }
+  .bar .brand { gap: 8px; }
+  .bar .brand svg { width: 34px; height: 37px; }
+  .bar .brand .gtext { font-size: 17px; letter-spacing: 0.06em; }
+  .bar .gutter { gap: 8px 10px; }
+}
+/* ---- mobile: bottom tab bar ---- */
+.pl-m { display: none; }
+.tab .ti, .tab.mobonly { display: none; }
+@media (max-width: 760px) {
+  .bar .tab.mobonly { display: flex; }
+  .bar .tab.deskonly, #snd, #qbtn { display: none !important; }
+  .bar .gutter { flex-wrap: nowrap; padding-block: 8px; gap: 10px; }
+  .bar .brand { order: 1; flex: 1 1 auto; min-width: 0; }
+  .bar #help { order: 3; } .bar #who { order: 4; }
+  .bar .right .pill:not(.qpill) { order: 2; flex: 0 0 auto; margin-left: auto; padding: 6px 12px; }
+  .bar .tabs { position: fixed; left: 0; right: 0; bottom: 0; z-index: 50; order: 0; margin: 0; flex: none; display: flex; flex-wrap: nowrap; overflow: visible; border-top: 2px solid #b8893a; background: linear-gradient(#24190d, #0e0905); box-shadow: 0 -6px 18px rgba(0,0,0,.65); padding-bottom: env(safe-area-inset-bottom, 0px); }
+  .bar .tabs .tab { flex: 1 1 0; min-width: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; height: 64px; padding: 0 2px; font-size: 11px; letter-spacing: 0; text-transform: none; font-weight: 600; color: #b8a98a; position: relative; border: 0; border-radius: 0; }
+  .bar .tabs .tab .ti { display: block; filter: drop-shadow(0 0 5px rgba(232,195,106,.25)); }
+  .bar .tabs .tab[aria-current="page"] { color: #e8c36a; background: radial-gradient(ellipse at 50% 0, rgba(232,195,106,.22), transparent 70%); }
+  .bar .tabs .tab[aria-current="page"] .ti { filter: drop-shadow(0 0 7px rgba(232,195,106,.8)); }
+  .pl-d { display: none; } .pl-m { display: inline; }
+  .bar .brand svg { flex: 0 0 auto; width: 28px; height: 31px; }
+  .bar .brand .gtext { white-space: nowrap; font-size: 14px; letter-spacing: 0.04em; }
+  .bar .right .pill:not(.qpill) { font-size: 12px; padding: 5px 9px; gap: 6px; }
+  .bar #help, .bar #who { flex: 0 0 auto; }
+  .bar .tabs .tab .dlong { display: none; }
+  .bar .tabs .tab .dot { position: absolute; top: 6px; left: 54%; }
+  body { padding-bottom: calc(72px + env(safe-area-inset-bottom, 0px)); }
+}
+footer.ground .gutter { align-items: center; row-gap: 8px; }
+.ground .flinks { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 18px; }
+.ground .flinks > * { line-height: 1.4; }
+.ground .linkbtn { display: inline; padding: 0; min-height: 0; border: 0; background: none; cursor: pointer; margin: 0; font: inherit; font-size: 13px; letter-spacing: 0; text-transform: none; font-weight: 500; color: var(--blue); text-decoration: underline; }
+@media (max-width: 600px) { footer.ground .gutter { flex-direction: column; align-items: flex-start; } }
 </style>
 
 <svg id="sprites" width="0" height="0" style="position:absolute" aria-hidden="true">
@@ -1074,8 +1128,13 @@ textarea.field { resize: vertical; min-height: 110px; }
 
   <footer class="ground">
     <div class="gutter">
-      <span class="note">Progress is saved and shared with the team. <button type="button" id="install" class="linkbtn" hidden>Install on your phone</button> <span id="install-tip" class="muted"></span></span>
-      <span><a href="#privacy" class="linkbtn" style="margin-left:0; margin-right:14px">Privacy</a>Rounds clear on the 1st of each month</span>
+      <span class="note">Progress is saved and shared with the team.</span>
+      <nav class="flinks" aria-label="Footer">
+        <button type="button" id="install" class="linkbtn" hidden>Install on your phone</button>
+        <a href="#privacy" class="linkbtn">Privacy</a>
+        <span>Rounds clear on the 1st of each month</span>
+      </nav>
+      <span id="install-tip" class="muted" style="flex-basis:100%"></span>
     </div>
   </footer>
 </div>
@@ -1324,8 +1383,9 @@ textarea.field { resize: vertical; min-height: 110px; }
     }
     watchCard();
     var m = me(), r = route();
-    $('round-pill').textContent = CUR_SHORT + ' ' + T.y + ' round · ' +
-      (DAYS_LEFT === 0 ? 'last day' : DAYS_LEFT === 1 ? '1 day left' : DAYS_LEFT + ' days left');
+    $('round-pill').innerHTML = CUR_SHORT + '<span class="pl-d"> · ' +
+      (DAYS_LEFT === 0 ? 'last day' : DAYS_LEFT === 1 ? '1 day left' : DAYS_LEFT + ' days left') + '</span><span class="pl-m"> · ' + DAYS_LEFT + 'd</span>';
+    $('round-pill').parentNode.title = CUR_LONG + ' round';
     var av = $('who'), ak = m ? 'r' + rankIdx(setsOf(m.id)) : '?';
     if (av.getAttribute('data-k') !== ak) {
       av.setAttribute('data-k', ak);
@@ -1345,14 +1405,24 @@ textarea.field { resize: vertical; min-height: 110px; }
     renderQAdmin();
     var brand = document.querySelector('.brand');
     if (m && r === 'home') brand.setAttribute('aria-current', 'page'); else brand.removeAttribute('aria-current');
-    var tabs = [['card', 'My Profile', 'profile'], ['grant', 'Grant'], ['trade', 'Trade'], ['guide', 'Guide'], ['quests', 'Quests']];
+    var tabs = [['home', 'Home', 'home', 'mobonly'], ['card', 'My Profile', 'profile'], ['grant', 'Grant'], ['trade', 'Trade'], ['guide', 'Guide', 'guide', 'deskonly'], ['quests', 'Quests']];
     if (m && m.role === 'admin') tabs.push(['admin', 'Admin']);
+    var ICONS = {
+      home: 'M3 11l9-8 9 8M5 10v10h5v-6h4v6h5V10',
+      card: 'M12 12a4 4 0 100-8 4 4 0 000 8zM4 21c0-4 4-6 8-6s8 2 8 6',
+      grant: 'M12 3l2 5 5 2-5 2-2 5-2-5-5-2 5-2zM19 16l.8 2 2 .8-2 .8-.8 2-.8-2-2-.8 2-.8z',
+      trade: 'M4 8h14l-3-3M20 16H6l3 3',
+      guide: 'M4 5a2 2 0 012-2h13v16H6a2 2 0 00-2 2zM4 19a2 2 0 012-2h13',
+      quests: 'M5 21V4M5 5h12l-2 4 2 4H5',
+      admin: 'M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z'
+    };
     var inbox = m ? incoming(m.id).length : 0;
     var reqs = (m && m.role === 'admin') ? pendingList().length : 0;
     $('tabs').innerHTML = m ? tabs.map(function (t) {
       var dot = (t[0] === 'trade' && inbox) ? '<span class="dot" aria-label="' + inbox + ' offer' + (inbox === 1 ? '' : 's') + ' waiting">' + (inbox > 9 ? '9+' : inbox) + '</span>' : '';
       if (t[0] === 'admin' && reqs) dot = '<span class="dot" aria-label="' + reqs + ' join request' + (reqs === 1 ? '' : 's') + '">' + (reqs > 9 ? '9+' : reqs) + '</span>';
-      return '<a class="tab" href="#' + (t[2] || t[0]) + '"' + (t[0] === r ? ' aria-current="page"' : '') + '>' + t[1] + dot + '</a>';
+      var short = t[0] === 'card' ? 'Profile' : t[1];
+      return '<a class="tab ' + (t[3] || '') + '" href="#' + (t[2] || t[0]) + '"' + (t[0] === r ? ' aria-current="page"' : '') + '><svg class="ti" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="' + (ICONS[t[0]] || '') + '"/></svg><span class="tl">' + (t[0] === 'card' ? '<span class="dlong">My </span>' : '') + short + '</span>' + dot + '</a>';
     }).join('') : '';
     if (!m) renderGate();
     else if (r === 'trade') renderTrade(m);
