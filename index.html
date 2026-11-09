@@ -900,7 +900,7 @@ textarea.field { resize: vertical; min-height: 110px; }
     <section class="panel roster">
       <div class="eyebrow">Admin</div>
       <h1 class="gtext">Run the Round</h1>
-      <p class="muted">Decide who takes part each month. Switch someone off for a round and they drop out of it; their name stays on the list.</p>
+      <p class="muted">Decide who takes part each month. Switch someone off for a round and they drop out of it; their name stays on the list. To delete someone completely, use Remove.</p>
       <div id="req-box"></div>
       <div class="rhead" aria-hidden="true"><span>Person</span><span id="col-a"></span><span id="col-b"></span></div>
       <div id="roster-list" style="display:flex; flex-direction:column; gap:10px"></div>
@@ -1467,6 +1467,17 @@ textarea.field { resize: vertical; min-height: 110px; }
     renderDeeds(m);
   }
 
+  var DEL = { id: '', busy: false };
+  // Removes a person for good: their bracelets (all rounds), their open swap offers, then the person record.
+  function deletePerson(p) {
+    return Promise.all([
+      S.db.collection('cards').get().then(function (snap) { return snap.docs.filter(function (d) { return d.id.slice(-(p.id.length + 2)) === '__' + p.id; }).map(function (d) { return 'cards/' + d.id; }); }),
+      S.db.collection('trades').where('fromId', '==', p.id).get().then(function (snap) { return snap.docs.filter(function (d) { return (d.data() || {}).status === 'open'; }).map(function (d) { return 'trades/' + d.id; }); })
+    ]).then(function (lists) {
+      var paths = [].concat.apply([], lists);
+      return Promise.all(paths.map(function (x) { return S.db.doc(x).delete(); }));
+    }).then(function () { return S.db.doc('people/' + p.id).delete(); });
+  }
   function renderAdmin() {
     $('col-a').textContent = CUR_SHORT;
     $('col-b').textContent = NEXT_SHORT;
@@ -1483,7 +1494,14 @@ textarea.field { resize: vertical; min-height: 110px; }
       }
       return '<div class="rrow"><div class="rwho"><span class="ravatar" aria-hidden="true">' + esc(initials(p.name)) + '</span>' +
         '<div class="rname"><b>' + esc(p.name) + '</b><span style="display:flex; flex-wrap:wrap; align-items:center; gap:8px"><span class="chip' + (admin ? ' admin' : '') + '" style="display:inline-flex; align-items:center; cursor:default">' + (admin ? 'Admin' : 'Member') + '</span>' +
-        '<button type="button" class="btn2" style="min-height:32px; padding:0 12px; font-size:12px" data-act="role" data-pid="' + esc(p.id) + '" aria-label="Make ' + esc(p.name) + (admin ? ' a member' : ' an admin') + '">' + (admin ? 'Make member' : 'Make admin') + '</button></span></div></div>' +
+        '<button type="button" class="btn2" style="min-height:32px; padding:0 12px; font-size:12px" data-act="role" data-pid="' + esc(p.id) + '" aria-label="Make ' + esc(p.name) + (admin ? ' a member' : ' an admin') + '">' + (admin ? 'Make member' : 'Make admin') + '</button>' +
+        (p.id === S.me ? '' : '<button type="button" class="btn2 danger" style="min-height:32px; padding:0 12px; font-size:12px" data-act="del-ask" data-pid="' + esc(p.id) + '" aria-label="Remove ' + esc(p.name) + ' from Charm Master">Remove</button>') +
+        '</span>' +
+        (DEL.id === p.id ? '<div class="tnote" style="flex-direction:column; align-items:flex-start; margin-top:8px"><strong style="color:#ffb27a">Remove ' + esc(p.name) + ' for good?</strong>' +
+          '<span>This deletes them from the roster, wipes their bracelets and withdraws their open swap offers. Charms already granted stay in the history. This cannot be undone.</span>' +
+          '<span style="display:flex; flex-wrap:wrap; gap:12px"><button type="button" class="btn danger" data-act="del-go" data-pid="' + esc(p.id) + '"' + (DEL.busy ? ' disabled' : '') + '>' + (DEL.busy ? 'Removing…' : 'Yes, remove ' + esc(p.name)) + '</button>' +
+          '<button type="button" class="btn2" data-act="del-cancel" data-pid="' + esc(p.id) + '"' + (DEL.busy ? ' disabled' : '') + '>Keep them</button></span></div>' : '') +
+        '</div></div>' +
         sw(CUR, CUR_NAME) + sw(NEXT, NEXT_NAME) + '</div>';
     }).join('');
     renderWipe();
@@ -2143,6 +2161,20 @@ textarea.field { resize: vertical; min-height: 110px; }
     if (!b || !S.db) return;
     var p = person(b.getAttribute('data-pid'));
     if (!p) return;
+    var act0 = b.getAttribute('data-act'), mm = me();
+    if (act0 === 'del-ask' || act0 === 'del-cancel' || act0 === 'del-go') {
+      if (!mm || mm.role !== 'admin' || b.disabled || DEL.busy) return;
+      if (act0 === 'del-ask') { if (p.id === mm.id) return; DEL.id = p.id; renderAdmin(); }
+      else if (act0 === 'del-cancel') { DEL.id = ''; renderAdmin(); }
+      else {
+        var admins0 = S.people.filter(function (x) { return x.role === 'admin'; }).length;
+        if (p.id === mm.id || (p.role === 'admin' && admins0 < 2)) { DEL.id = ''; renderAdmin(); say('There must always be at least one admin.', true); return; }
+        DEL.busy = true; renderAdmin();
+        deletePerson(p).then(function () { DEL.busy = false; DEL.id = ''; render(); say('Removed ' + p.name + ' from Charm Master.'); },
+          function () { DEL.busy = false; renderAdmin(); say(p.name + ' could not be fully removed. Check the roster and try again.', true); });
+      }
+      return;
+    }
     if (b.getAttribute('data-act') === 'tog') {
       var r = b.getAttribute('data-round'), on = !inRound(p, r), rounds = {};
       rounds[r] = on;
