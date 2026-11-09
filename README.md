@@ -16,22 +16,20 @@ Eight charms, all worth the same: Heart, Star, Horseshoe, Clover, Blue Moon, Uni
 ### Granting
 - You cannot grant to yourself.
 - You can only grant to someone who is in the current round.
-- Each person can grant **3 charms per UK calendar day** (admins too). The Grant page shows "Charms left today", and the limit resets at midnight UK time. The limit is also checked against the database when you cast, so using a second tab or device does not get around it.
-- The limit is the `DAILY_LIMIT` constant in `index.html`.
+- Each person can grant a limited number of charms per **UK calendar day**, and the limit rises with rank (3, 4, 5 and 6, see the table below). Admins have the same limits. The Grant page shows "Charms left today", and the limit resets at midnight UK time. It is also checked against the database when you cast, so using a second tab or device does not get around it.
+- The limits are the `grants` values in the `LADDER` array in `index.html`.
 
 ### Sets and ranks
-Collecting all eight charms completes a set. A set uses up one of each charm (spares stay on your bracelet) and ranks you up:
+Collecting all eight charms completes a set. A set uses up one of each charm (spares stay on your bracelet) and ranks you up. The ladder is sized so the top rank can be reached within one monthly round, and everyone starts again as a Wanderer on the 1st.
 
-| Sets | Rank |
-|---|---|
-| 0 | Wanderer |
-| 1 | Apprentice |
-| 2 | Adept |
-| 3 | Enchanter |
-| 4 | Archmage |
-| 5 | Charm Master |
+| Sets | Rank | Charms you can grant per day |
+|---|---|---|
+| 0 | Wanderer | 3 |
+| 1 | Apprentice | 4 |
+| 2 | Enchanter | 5 |
+| 3 | Charm Master | 6 |
 
-Each rank has its own animated medallion.
+A set takes about 22 random draws on average without trading, so three sets in a month is a stretch goal for a busy team, and trading spares makes it easier. Each rank has its own animated medallion. The code still contains medallion designs for two further ranks (Adept and Archmage) that are not currently on the ladder.
 
 ### Rounds
 A round is one UK calendar month (for example `2026-11`). Bracelets, ranks, grants and trades are stored per round, so a new month starts with everyone as a Wanderer. Admins choose who is in the current and next month's round from the Admin page.
