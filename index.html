@@ -1225,7 +1225,7 @@ textarea.field { resize: vertical; min-height: 110px; }
   }
   function render() {
     var qv = !QID || location.hash === '#quests';
-    $('qbtn').textContent = QID ? '\u2694 ' + questName(QID) : 'Choose a quest';
+    $('qbtn').textContent = QID ? 'Quest: ' + questName(QID) : 'Choose a quest';
     $('v-quests').hidden = !qv;
     if (qv) {
       ['v-gate', 'v-card', 'v-home', 'v-grant', 'v-admin', 'v-trade', 'v-guide'].forEach(function (i) { $(i).hidden = true; });
@@ -1258,7 +1258,7 @@ textarea.field { resize: vertical; min-height: 110px; }
     $('v-guide').hidden = !m || r !== 'guide';
     var brand = document.querySelector('.brand');
     if (m && r === 'home') brand.setAttribute('aria-current', 'page'); else brand.removeAttribute('aria-current');
-    var tabs = [['card', 'My Profile', 'profile'], ['grant', 'Grant'], ['trade', 'Trade'], ['guide', 'Guide']];
+    var tabs = [['card', 'My Profile', 'profile'], ['grant', 'Grant'], ['trade', 'Trade'], ['guide', 'Guide'], ['quests', 'Quests']];
     if (m && m.role === 'admin') tabs.push(['admin', 'Admin']);
     var inbox = m ? incoming(m.id).length : 0;
     var reqs = (m && m.role === 'admin') ? pendingList().length : 0;
