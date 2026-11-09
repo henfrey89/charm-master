@@ -1,6 +1,6 @@
 # Charm Master
 
-A World of Warcraft-styled team rewards tool. Teammates grant each other random magic charms for good work, collect all eight to complete a set, and rank up from Wanderer to Charm Master. Rounds run for one UK calendar month.
+A medieval-style team rewards tool. Teammates grant each other random magic charms for good work, collect all eight to complete a set, and rank up from Wanderer to Charm Master. Rounds run for one UK calendar month.
 
 **Live site:** https://henfrey89.github.io/charm-master/
 

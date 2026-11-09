@@ -2024,8 +2024,10 @@ textarea.field { resize: vertical; min-height: 110px; }
       L.amb = true; L.sess = ctx.createGain(); L.sess.gain.value = 1; L.sess.connect(L.bus.music);
       L.nextT = now + 0.15; L.nextBar = 0; L.dr = null;
       L.timer = setInterval(function () {
-        while (L.nextT < ctx.currentTime + 0.5) { barA(ctx, L.sess, L.nextT, L.nextBar % 16); L.nextT += BARA; L.nextBar++; }
-      }, 120);
+        // If the page stalled (or the tab was asleep) skip the bars we missed instead of firing them all at once.
+        if (L.nextT < ctx.currentTime - 0.05) { var miss = Math.ceil((ctx.currentTime - L.nextT) / BARA); L.nextT += miss * BARA; L.nextBar += miss; }
+        while (L.nextT < ctx.currentTime + 1.6) { barA(ctx, L.sess, L.nextT, L.nextBar % 16); L.nextT += BARA; L.nextBar++; }
+      }, 250);
     }
     function startMusic(gridStart, melodyAt) {
       if (L.sess) return;
@@ -2036,12 +2038,13 @@ textarea.field { resize: vertical; min-height: 110px; }
       var n = gridStart < now ? Math.ceil((now - gridStart) / BAR) : 0;
       L.nextT = gridStart + n * BAR; L.nextBar = n; L.melodyAt = melodyAt;
       L.timer = setInterval(function () {
-        while (L.nextT < ctx.currentTime + 0.5) {
+        if (L.nextT < ctx.currentTime - 0.05) { var miss = Math.ceil((ctx.currentTime - L.nextT) / BAR); L.nextT += miss * BAR; L.nextBar += miss; }
+        while (L.nextT < ctx.currentTime + 1.6) {
           var full = L.nextT >= L.melodyAt - 0.01;
           bar(ctx, L.sess, L.nextT, L.nextBar % 8, { drum: full, melody: full });
           L.nextT += BAR; L.nextBar++;
         }
-      }, 120);
+      }, 250);
     }
     function stopMusic(f) {
       clearInterval(L.timer); L.timer = 0;
