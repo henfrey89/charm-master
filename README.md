@@ -56,6 +56,9 @@ A round is one UK calendar month (for example `2026-11`). Bracelets, ranks, gran
 - Offers expire after 3 days.
 - If an offer can no longer be honoured (for example the spare is gone) it is voided.
 
+### Install on your phone
+The standalone site can be added to a phone's home screen so it opens like an app, full screen with its own icon. Use the **Install on your phone** link in the page footer: on Android and desktop Chrome it opens the browser's install prompt, and on iPhone it explains Share, then Add to Home Screen. The link disappears once installed. It is a basic installable web app: a small service worker (`sw.js`) loads the latest copy from the network and only falls back to the last copy if you are offline. Needs the site over https. It is not part of the Claude artifact copy.
+
 ### Welcome tour and sound
 - A cinematic intro plus a parchment scroll that explains the game. It opens automatically once per round for each person, can be skipped, and replays from the **?** button.
 - Sound is on by default: a bardcore tavern tune loops in the background, with sound effects for the intro, charm reveals and set completion. The speaker button mutes it, and the choice is remembered on that device. Browsers only allow sound after the first click or keypress.
@@ -108,6 +111,7 @@ A four-digit PIN chosen by the admins.
 | `index.html` | The whole app: HTML, CSS and JavaScript in one file, plus a small shim that connects it to Firebase |
 | `firebase-config.js` | The four Firebase web app settings (apiKey, authDomain, projectId, appId). These are public identifiers, not secrets |
 | `firestore.rules` | The Firestore security rules. Paste into Firebase console > Firestore > Rules and Publish |
+| `manifest.webmanifest`, `sw.js`, `icon-192.png`, `icon-512.png`, `apple-touch-icon.png` | Lets the site be installed on a phone's home screen (see below) |
 | `SETUP.md` | Step-by-step guide to set up Firebase and GitHub Pages from scratch |
 
 - **Hosting:** GitHub Pages, serving `main` / root.

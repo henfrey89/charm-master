@@ -1,6 +1,8 @@
 <!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <style>:root{color-scheme:light;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0;font:14px system-ui,sans-serif}img{max-width:100%}[hidden]{display:none!important}</style>
+<meta name="theme-color" content="#1a0f2e"><meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-title" content="Charm Master"><meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="manifest" href="manifest.webmanifest"><link rel="icon" type="image/png" href="icon-192.png"><link rel="apple-touch-icon" href="apple-touch-icon.png">
 <script src="firebase-config.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
@@ -98,6 +100,7 @@ header.bar { position: relative; background: rgba(7, 9, 26, 0.94); border-bottom
 .bar .right { display: flex; align-items: center; gap: 12px; flex: 0 0 auto; margin-left: auto; }
 .bar .avatar { flex: 0 0 44px; }
 .bar .pill { white-space: nowrap; }
+.linkbtn { background: none; border: 0; padding: 0; margin-left: 8px; color: var(--blue, #7cc0ff); font: inherit; text-decoration: underline; cursor: pointer; }
 .qpill { text-decoration: none; max-width: 190px; overflow: hidden; text-overflow: ellipsis; display: block; color: #ffe39a; cursor: pointer; }
 .qpill:hover { border-color: var(--gold, #e8c36a); }
 .qitem .lbrow { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
@@ -1003,7 +1006,7 @@ textarea.field { resize: vertical; min-height: 110px; }
 
   <footer class="ground">
     <div class="gutter">
-      <span class="note">Progress is saved and shared with the team.</span>
+      <span class="note">Progress is saved and shared with the team. <button type="button" id="install" class="linkbtn" hidden>Install on your phone</button> <span id="install-tip" class="muted"></span></span>
       <span>Rounds clear on the 1st of each month</span>
     </div>
   </footer>
@@ -2862,6 +2865,23 @@ textarea.field { resize: vertical; min-height: 110px; }
     }, function () { S.ready = true; S.err = true; render(); });
     }
   }).catch(function () { S.ready = true; S.nodb = true; S.qs.ready = true; render(); });
+
+  // ---- Install to home screen (standalone site only: needs the web manifest) ----
+  (function () {
+    var btn = $('install'), tip = $('install-tip'), dip = null;
+    function standalone() { try { return (window.matchMedia && matchMedia('(display-mode: standalone)').matches) || navigator.standalone === true; } catch (e) { return false; } }
+    var ok = !!document.querySelector('link[rel="manifest"]');
+    if (ok && 'serviceWorker' in navigator && window.isSecureContext) { try { navigator.serviceWorker.register('sw.js').catch(function () {}); } catch (e) {} }
+    function show() { btn.hidden = !ok || standalone(); }
+    show();
+    window.addEventListener('beforeinstallprompt', function (e) { e.preventDefault(); dip = e; show(); });
+    window.addEventListener('appinstalled', function () { dip = null; btn.hidden = true; tip.textContent = ''; });
+    btn.addEventListener('click', function () {
+      if (dip) { dip.prompt(); dip = null; return; }
+      var ios = /iphone|ipad|ipod/i.test(navigator.userAgent);
+      tip.textContent = ios ? 'Tap the Share button, then Add to Home Screen.' : 'Open your browser menu and choose Install app or Add to Home screen.';
+    });
+  })();
 
   // Decorative embers
   var sky = $('sky');
