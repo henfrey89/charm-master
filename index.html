@@ -811,6 +811,7 @@ textarea.field { resize: vertical; min-height: 110px; }
         <div class="actions">
           <button type="submit" class="btn" id="g-cast">Cast the charm</button>
           <span class="muted small">Random draw · equal odds for all 8</span>
+          <span class="muted small" id="g-left" aria-live="polite"></span>
         </div>
         <div class="msg bad" id="g-msg" role="alert"></div>
         <div class="rule"></div>
@@ -881,6 +882,7 @@ textarea.field { resize: vertical; min-height: 110px; }
           <li>A round is one calendar month, in UK time.</li>
           <li>On the 1st, the final standings are saved to the Hall of Fame and every bracelet is cleared.</li>
           <li>Admins choose who is in each month's round.</li>
+          <li>Each person can grant up to 3 charms a day. The count resets at midnight UK time.</li>
           <li>Trades are one-for-one, and an offer expires after 3 days.</li>
           <li>Every full set ranks you up and uses up one of each charm, so you can keep collecting.</li>
         </ul>
@@ -1289,8 +1291,25 @@ textarea.field { resize: vertical; min-height: 110px; }
     $('stage').innerHTML = html;
   }
 
+  // Daily grant limit per person, counted by UK calendar day, to stop charms being handed out in bulk.
+  var DAILY_LIMIT = 3;
+  function ukDayOf(iso) {
+    var d = new Date(iso); if (isNaN(d)) return '';
+    return new Intl.DateTimeFormat('en-CA', { timeZone: TZ, year: 'numeric', month: '2-digit', day: '2-digit' }).format(d);
+  }
+  function grantedToday(list, id) {
+    var today = ukDayOf(new Date().toISOString());
+    return list.filter(function (g) { return g.byId === id && typeof g.at === 'string' && ukDayOf(g.at) === today; }).length;
+  }
+  function updateLeft() {
+    var m = me(), el = $('g-left'); if (!m || !el) return;
+    var left = Math.max(0, DAILY_LIMIT - grantedToday(S.grants, m.id));
+    el.textContent = left > 0 ? 'Charms left today: ' + left + ' of ' + DAILY_LIMIT : 'You have used all ' + DAILY_LIMIT + ' charms for today. They refresh at midnight UK time.';
+    if (S.g.phase !== 'casting') $('g-cast').disabled = left <= 0;
+  }
   function renderGrant(m) {
     $('grant-eyebrow').textContent = 'Round · ' + CUR_LONG;
+    updateLeft();
     var opts = S.people.filter(function (p) { return p.id !== m.id && inRound(p, CUR); });
     var sig = m.id + '#' + opts.map(function (p) { return p.id + p.name; }).join('|');
     if (sig !== grantSig) {
@@ -2286,15 +2305,22 @@ textarea.field { resize: vertical; min-height: 110px; }
     if (to.id === m.id || !inRound(to, CUR)) { gmsg('Choose a teammate who is in this round.'); return; }
     if (!why) { gmsg('Add a short reason so everyone knows what the charm is for.'); return; }
     gmsg('');
-    var idx = drawIndex(), started = Date.now();
-    S.g = { phase: 'casting', pick: idx, toId: toId, why: why };
     $('g-cast').disabled = true;
-    renderStage();
-    grantCharm(m.id, toId, idx, why).then(function (res) {
-      return sleep(Math.max(0, 2600 - (Date.now() - started))).then(function () { S.g = { phase: 'reveal', pick: idx, toId: toId, why: why, note: res.noteFailed, done: res.done, sets: res.sets }; });
-    }, function () {
-      S.g = { phase: 'error' };
-    }).then(function () { $('g-cast').disabled = false; renderStage(); });
+    // Check today's total against the database (not just this screen), so it holds across devices and tabs.
+    S.db.collection('grants').where('byId', '==', m.id).get().then(function (snap) {
+      return grantedToday(snap.docs.map(function (d) { return d.data() || {}; }), m.id);
+    }, function () { return -1; }).then(function (n) {
+      if (n < 0) { gmsg('Could not check your daily limit. Check your connection and try again.'); updateLeft(); return; }
+      if (n >= DAILY_LIMIT) { gmsg('You have used all ' + DAILY_LIMIT + ' of your charms for today. They refresh at midnight UK time.'); updateLeft(); return; }
+      var idx = drawIndex(), started = Date.now();
+      S.g = { phase: 'casting', pick: idx, toId: toId, why: why };
+      renderStage();
+      return grantCharm(m.id, toId, idx, why).then(function (res) {
+        return sleep(Math.max(0, 2600 - (Date.now() - started))).then(function () { S.g = { phase: 'reveal', pick: idx, toId: toId, why: why, note: res.noteFailed, done: res.done, sets: res.sets }; });
+      }, function () {
+        S.g = { phase: 'error' };
+      }).then(function () { renderStage(); updateLeft(); });
+    });
   });
 
   $('wipe-panel').addEventListener('click', function (e) {
