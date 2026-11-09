@@ -675,7 +675,8 @@ textarea.field { resize: vertical; min-height: 110px; }
   .bar .gutter { gap: 8px 10px; }
 }
 /* ---- mobile: bottom tab bar ---- */
-.pl-m, .state .ss { display: none; }
+.pl-m, .state .ss, .rrole, .rtog { display: none; }
+.rline { display: contents; }
 #install, #install-tip { display: none !important; }
 @media (max-width: 760px) { body[data-route="home"] #install:not([hidden]), body[data-route="home"] #install-tip { display: inline !important; } }
 .tab .ti, .tab.mobonly { display: none; }
@@ -731,6 +732,67 @@ textarea.field { resize: vertical; min-height: 110px; }
   #grid .state .sl { display: none; }
   #grid .state .ss { display: inline; }
   .mcol:not(.open) { gap: 4px; }
+  /* page headers and panels */
+  .ghead { gap: 8px; margin-bottom: 16px; }
+  .ghead p { font-size: 15px; line-height: 1.5; }
+  .tbar, .tpanel { padding: 16px; gap: 14px; }
+  .tpanel { margin-top: 16px !important; }
+  .roster { padding: 16px; gap: 12px; }
+  .roster p { font-size: 15px; line-height: 1.5; }
+  /* sub-tabs on one line, scrolling if needed */
+  .ttabs { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; gap: 0; }
+  .ttabs::-webkit-scrollbar { display: none; }
+  .ttab { flex: 1 0 auto; justify-content: center; padding: 0 12px; font-size: 12px; letter-spacing: 0.06em; gap: 6px; white-space: nowrap; }
+  /* trade: chip row scrolls sideways, compact offers */
+  .tfilter { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; padding-bottom: 2px; }
+  .tfilter::-webkit-scrollbar { display: none; }
+  .tfilter > * { flex: 0 0 auto; }
+  .fchip { width: 40px; height: 40px; }
+  .mgrid { grid-template-columns: minmax(0, 1fr); gap: 10px; }
+  .offer { flex-direction: row; flex-wrap: wrap; align-items: center; gap: 8px 10px; padding: 12px; }
+  .offer > div:first-child { order: 0; flex: 1 1 100%; font-size: 14px; }
+  .offer > .pair { order: 1; flex: 0 1 auto; gap: 8px; flex-wrap: nowrap; }
+  .offer > .btns { order: 2; flex: 0 0 auto; margin-left: auto; }
+  .offer > .muted { order: 3; flex: 1 1 100%; font-size: 12.5px !important; }
+  .offer > .warn { order: 4; flex: 1 1 100%; }
+  .sock.sm { width: 52px; height: 52px; }
+  .sock.sm svg { width: 34px; height: 34px; }
+  .offer .btn, .offer .btn2 { min-height: 44px; padding: 0 12px; font-size: 12px; letter-spacing: 0.05em; }
+  .offer .pair .for { font-size: 0; }
+  .offer .pair .for::after { content: "\21C4"; font-size: 20px; color: var(--gold); }
+  /* admin: one-line roster rows, tap to open */
+  .rhead { grid-template-columns: minmax(0, 1fr) 56px 56px; padding: 0 12px; }
+  .rrow:not(.req) { grid-template-columns: minmax(0, 1fr) 56px 56px; padding: 4px 12px; gap: 0 4px; }
+  .rrow:not(.req) .rwho, .rrow:not(.req) .rname { display: contents; }
+  .rrow .ravatar { display: none; }
+  .rline { display: flex; grid-column: 1; grid-row: 1; align-items: center; gap: 8px; min-width: 0; min-height: 48px; }
+  .rline b { font-size: 15px; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .rrole { display: inline; flex: 0 0 auto; font: 700 11px var(--display); letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); }
+  .rrole.admin { color: var(--gold-hi); }
+  .rrole:not(.admin) { display: none; }
+  .rtog { display: block; flex: 0 0 auto; margin-left: auto; width: 40px; height: 44px; background: none; border: 0; cursor: pointer; position: relative; }
+  .rtog::after { content: ""; position: absolute; left: 15px; top: 15px; width: 9px; height: 9px; border-right: 2px solid var(--gold); border-bottom: 2px solid var(--gold); transform: rotate(45deg); transition: transform .2s; }
+  .rrow.open .rtog::after { transform: rotate(225deg); top: 19px; }
+  .rrow:not(.req) > .rcell:nth-child(2) { grid-column: 2; grid-row: 1; }
+  .rrow:not(.req) > .rcell:nth-child(3) { grid-column: 3; grid-row: 1; }
+  .racts { display: none !important; grid-column: 1 / -1; padding: 2px 0 10px; }
+  .rrow.open .racts { display: flex !important; }
+  .racts .chip { display: none !important; }
+  .rrow:not(.req) .tnote { grid-column: 1 / -1; }
+  /* grant: pinned cast button, immersive reveal */
+  .ggrid { flex-direction: column; gap: 16px; }
+  .gform { padding: 16px; gap: 14px; flex: 0 0 auto; }
+  .gform .actions { position: sticky; bottom: calc(68px + env(safe-area-inset-bottom, 0px)); z-index: 5; margin: 0 -16px; padding: 10px 16px; background: linear-gradient(to top, #0e0905 75%, rgba(14, 9, 5, 0)); gap: 4px 12px; }
+  .gform .actions .btn { flex: 1 1 100%; min-height: 48px; }
+  .gform .actions > .muted:not(#g-left) { display: none; }
+  .gform .actions #g-left { flex: 1 1 100%; text-align: center; }
+  .stage:not(.live) { order: -1; flex: 0 0 auto; min-height: 0; padding: 4px 0 0; background: none; border: 0; box-shadow: none; }
+  .stage:not(.live)::before, .stage:not(.live)::after { display: none; }
+  .stage:not(.live) > :first-child { zoom: 0.36; margin: -20px auto -24px; }
+  .stage:not(.live) > :not(:first-child) { display: none; }
+  .stage.live { position: fixed; inset: 0; z-index: 60; border-radius: 0; border: 0; min-height: 0; justify-content: center; overflow-y: auto; padding: 24px 20px calc(24px + env(safe-area-inset-bottom, 0px)); background: radial-gradient(ellipse at 50% 30%, #2a1a5c, #0a0614 70%); }
+  .stage.live::before, .stage.live::after { display: none; }
+  body.stage-live { overflow: hidden; }
   /* slim leaderboard rows */
   .lbrow { grid-template-columns: 30px 34px minmax(0, 1fr) auto; grid-template-areas: "rank av name score" "rank av gems score"; gap: 2px 10px; padding: 8px 12px; align-items: center; }
   .lbrow .rank { grid-area: rank; width: 30px; height: 30px; flex-basis: 30px; font-size: 14px; border-width: 1.5px; }
@@ -1581,6 +1643,8 @@ footer.ground .gutter { align-items: center; row-gap: 8px; }
         '<div class="stage-btns"><button type="button" class="btn2" id="g-again">Try again</button></div>';
     }
     $('stage').innerHTML = html;
+    $('stage').classList.toggle('live', g.phase !== 'idle');
+    document.body.classList.toggle('stage-live', g.phase !== 'idle');
   }
 
   // Daily grant limit per person, counted by UK calendar day, to stop charms being handed out in bulk.
@@ -1929,6 +1993,7 @@ footer.ground .gutter { align-items: center; row-gap: 8px; }
     return hashPin(p.pass.salt, code).then(function (h) { return h === p.pass.hash; });
   }
   var DEL = { id: '', busy: false };
+  var ROPEN = {};
   // Removes a person for good: their bracelets (all rounds), their open swap offers, then the person record.
   function deletePerson(p) {
     return Promise.all([
@@ -1954,8 +2019,11 @@ footer.ground .gutter { align-items: center; row-gap: 8px; }
       function sw(r, label) {
         return '<div class="rcell"><button type="button" class="sw" role="switch" aria-checked="' + inRound(p, r) + '" aria-label="' + esc(p.name) + ' in the ' + label + ' round" data-act="tog" data-pid="' + esc(p.id) + '" data-round="' + r + '"></button></div>';
       }
-      return '<div class="rrow"><div class="rwho"><span class="ravatar" aria-hidden="true">' + esc(initials(p.name)) + '</span>' +
-        '<div class="rname"><b>' + esc(p.name) + '</b><span style="display:flex; flex-wrap:wrap; align-items:center; gap:8px"><span class="chip' + (admin ? ' admin' : '') + '" style="display:inline-flex; align-items:center; cursor:default">' + (admin ? 'Admin' : 'Member') + '</span>' +
+      var isOpen = !!(ROPEN[p.id] || DEL.id === p.id || PR.id === p.id);
+      return '<div class="rrow' + (isOpen ? ' open' : '') + '"><div class="rwho"><span class="ravatar" aria-hidden="true">' + esc(initials(p.name)) + '</span>' +
+        '<div class="rname"><span class="rline"><b>' + esc(p.name) + '</b><span class="rrole' + (admin ? ' admin' : '') + '">' + (admin ? 'Admin' : 'Member') + '</span>' +
+        '<button type="button" class="rtog" data-act="ropen" data-pid="' + esc(p.id) + '" aria-expanded="' + isOpen + '" aria-label="' + (isOpen ? 'Hide' : 'Show') + ' actions for ' + esc(p.name) + '"></button></span>' +
+        '<span class="racts" style="display:flex; flex-wrap:wrap; align-items:center; gap:8px"><span class="chip' + (admin ? ' admin' : '') + '" style="display:inline-flex; align-items:center; cursor:default">' + (admin ? 'Admin' : 'Member') + '</span>' +
         '<button type="button" class="btn2" style="min-height:32px; padding:0 12px; font-size:12px" data-act="role" data-pid="' + esc(p.id) + '" aria-label="Make ' + esc(p.name) + (admin ? ' a member' : ' an admin') + '">' + (admin ? 'Make member' : 'Make admin') + '</button>' +
         (p.pass ? '<button type="button" class="btn2" style="min-height:32px; padding:0 12px; font-size:12px" data-act="pass-reset" data-pid="' + esc(p.id) + '" aria-label="Reset the passcode for ' + esc(p.name) + '">Reset passcode</button>' : '<span class="muted" style="font-size:12px">No passcode yet</span>') +
         (p.id === S.me ? '' : '<button type="button" class="btn2 danger" style="min-height:32px; padding:0 12px; font-size:12px" data-act="del-ask" data-pid="' + esc(p.id) + '" aria-label="Remove ' + esc(p.name) + ' from Charm Master">Remove</button>') +
@@ -2722,6 +2790,7 @@ footer.ground .gutter { align-items: center; row-gap: 8px; }
     var p = person(b.getAttribute('data-pid'));
     if (!p) return;
     var act0 = b.getAttribute('data-act'), mm = me();
+    if (act0 === 'ropen') { ROPEN[p.id] = !ROPEN[p.id]; renderAdmin(); return; }
     if (act0 === 'role' && p.role !== 'admin') act0 = 'promo-ask';
     if (act0 === 'pass-reset') {
       if (!mm || mm.role !== 'admin' || b.disabled) return;
