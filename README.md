@@ -34,6 +34,18 @@ A set takes about 22 random draws on average without trading, so three sets in a
 ### Most Generous
 The home page shows a **Most Generous** board: the top five people by number of charms granted in the current round (ties share a position), plus a stat card naming the leader. It resets each month with the round.
 
+### Quests
+A **quest** is a separate group running its own copy of the game: its own roster, admin and admin PIN, personal passcodes, bracelets, grants and trades. Nothing is shared between quests.
+
+- **Quests page:** lists every quest with a search box. Open it from the quest button in the header (or it appears first if you have not joined one).
+- **Joining:** pick a quest and enter its password. Then you join its roster as usual (name plus your own six-digit passcode, approved by that quest's admin). A device remembers the quests it has joined and who you are in each one.
+- **Starting one:** name it and choose a password. You then become its first admin and choose its admin PIN.
+- **Switching:** the header button takes you back to the Quests page. The page reloads into the quest you pick.
+- **Original Quest:** data created before quests existed is shown as "Original Quest", with no quest password.
+- Quest passwords are stored as salted hashes in `quests/{id}`. Like the other checks they run in the browser, so they keep out casual visitors rather than determined attackers. Every quest name is visible to anyone with the link.
+- Each quest's data lives in collections named `<questId>~people`, `<questId>~cards` and so on. The Firestore rules cover these with a pattern, so **republish `firestore.rules` after updating**.
+- Not built: renaming or deleting a quest, and changing a quest's password.
+
 ### Rounds
 A round is one UK calendar month (for example `2026-11`). Bracelets, ranks, grants and trades are stored per round, so a new month starts with everyone as a Wanderer. Admins choose who is in the current and next month's round from the Admin page.
 
@@ -110,6 +122,8 @@ A four-digit PIN chosen by the admins.
 | `cards/{YYYY-MM}__{personId}` | `roundId`, `personId`, `counts` (per charm), `sets` |
 | `grants/{id}` | `roundId`, `toId`, `byId`, `charm`, `reason`, `at` |
 | `trades/{id}` | `roundId`, `fromId`, `give`, `want`, `status` (`open`/`done`/`cancelled`/`void`), `toId`, `at`, `expiresAt`, `resolvedAt` |
+| `quests/{id}` | `name`, `nameLower`, `pass` (`salt`, `hash`), `createdAt` |
+| `<questId>~people`, `~cards`, `~trades`, `~grants`, `~_config` | The same collections as above and below, one set per quest. Data from before quests existed stays in the unprefixed collections (the Original Quest) |
 | `_config/adminpin` | `salt`, `hash`, `setAt` |
 | `_leases/{path}` | Short locks so two simultaneous grants to the same person do not overwrite each other |
 
@@ -148,6 +162,7 @@ Built and working:
 - Join requests, roster, remove people, admin PIN, personal passcodes
 - Granting with reveal animation and the daily limit
 - Bracelets, sets and ranks
+- Quests (several separate groups, each with its own admin, roster and progress)
 - **Most Generous** board and stat card on the home page
 - Open Market trading
 - Guide page, welcome tour and music
@@ -157,7 +172,6 @@ Not built yet:
 - **Hall of Fame and month-end rollover.** New months already start fresh because data is stored per round, but standings are not saved to a Hall of Fame. (The Guide's Rules tab already mentions it.)
 - Admin setup checklist and empty-state polish
 - Confetti and an activity feed
-- **Quests:** running several separate groups at once. Each quest would have its own name, password, admin and PIN, its own roster and progress (nothing shared between quests), a Quests page to browse and join them with a switcher in the header, and personal passcodes per quest.
 
 Everything was tested against a mock database in a browser, and the sign-in screen against the live Firebase project. Features beyond the sign-in screen have not been tried on the live database yet.
 

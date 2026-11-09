@@ -98,6 +98,14 @@ header.bar { position: relative; background: rgba(7, 9, 26, 0.94); border-bottom
 .bar .right { display: flex; align-items: center; gap: 12px; flex: 0 0 auto; margin-left: auto; }
 .bar .avatar { flex: 0 0 44px; }
 .bar .pill { white-space: nowrap; }
+.qpill { text-decoration: none; max-width: 190px; overflow: hidden; text-overflow: ellipsis; display: block; color: #ffe39a; cursor: pointer; }
+.qpill:hover { border-color: var(--gold, #e8c36a); }
+.qitem .lbrow { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
+.qitem .lbname { flex: 1 1 200px; min-width: 0; }
+.qitem { display: flex; flex-direction: column; gap: 8px; }
+.qitem .qform { padding: 12px 14px; border: 1px solid var(--bronze); background: rgba(0,0,0,.35); }
+.qtag { margin-left: 8px; font-size: 11px; letter-spacing: .08em; text-transform: uppercase; color: #9fe3b0; border: 1px solid #2f6b45; padding: 1px 6px; }
+#v-quests .panel { display: flex; flex-direction: column; gap: 14px; }
 .bar .tabs { gap: 0; }
 @media (max-width: 1240px) { .brand .gtext { font-size: 20px; letter-spacing: 0.08em; } .bar .gutter { column-gap: 14px; } }
 .brand { display: flex; align-items: center; gap: 12px; text-decoration: none; padding-block: 4px 2px; border-bottom: 3px solid transparent; }
@@ -731,6 +739,7 @@ textarea.field { resize: vertical; min-height: 110px; }
       </a>
       <nav class="tabs" id="tabs" aria-label="Main"></nav>
       <div class="right">
+      <a class="pill qpill" id="qbtn" href="#quests" title="Switch quest"></a>
       <div class="pill">
         <svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><path d="M9.5 1.5 A6.5 6.5 0 1 0 14.5 10 A5 5 0 1 1 9.5 1.5Z" fill="#7cc0ff"/></svg>
         <span id="round-pill">This month's round</span>
@@ -908,6 +917,30 @@ textarea.field { resize: vertical; min-height: 110px; }
       <p class="muted" id="gate-copy">Gathering the roster…</p>
       <div id="gate-body"></div>
     </section>
+  </div>
+
+  <div class="gutter view" id="v-quests" hidden>
+    <div style="display:flex; flex-direction:column; gap:24px">
+    <section class="panel gate">
+      <div class="eyebrow">Charm Master</div>
+      <h1 class="gtext">Quests</h1>
+      <p class="muted" id="q-copy">Each quest is its own group, with its own roster, admin and progress. Pick one to join with its password, or start your own below.</p>
+      <label class="sr" for="q-search">Search quests</label>
+      <input id="q-search" class="field" type="search" maxlength="40" placeholder="Search quests by name" autocomplete="off">
+      <div id="q-list" style="display:flex; flex-direction:column; gap:10px"></div>
+    </section>
+    <section class="panel gate">
+      <h2 class="gtext">Start a new quest</h2>
+      <p class="muted">You become its admin and choose its admin PIN when you sign in. Share the quest name and password with the people you want to join.</p>
+      <form id="q-new" class="inline-form" autocomplete="off">
+        <label class="sr" for="qn-name">Quest name</label><input id="qn-name" class="field" type="text" maxlength="40" placeholder="Quest name" required>
+        <label class="sr" for="qn-pass">Quest password</label><input id="qn-pass" class="field" type="password" maxlength="40" placeholder="Quest password (4+ characters)" autocomplete="off" required>
+        <label class="sr" for="qn-pass2">Repeat the quest password</label><input id="qn-pass2" class="field" type="password" maxlength="40" placeholder="Repeat password" autocomplete="off" required>
+        <button type="submit" class="btn">Create quest</button>
+      </form>
+      <div class="msg bad" id="q-newmsg" role="alert"></div>
+    </section>
+    </div>
   </div>
 
   <div class="gutter view" id="v-admin" hidden>
@@ -1115,15 +1148,21 @@ textarea.field { resize: vertical; min-height: 110px; }
   var DAYS_LEFT = new Date(T.y, T.m, 0).getDate() - T.d;
 
   // Remembering who you are on this device is a per-viewer convenience only.
-  var KEY = 'charm-chart.me';
+  // ---- quests: each quest keeps its own people, cards, trades, grants and admin PIN under a prefixed set of collections ----
+  function lsGet(k) { try { return localStorage.getItem(k); } catch (e) { return null; } }
+  var QID = lsGet('charm-master.quest') || (lsGet('charm-chart.me') ? 'main' : '');
+  var QP = (QID && QID !== 'main') ? QID + '~' : '';
+  var SFX = QP ? '.' + QID : '';
+  var KEY = 'charm-chart.me' + SFX;
   function loadMe() { try { return localStorage.getItem(KEY); } catch (e) { return null; } }
-  var KEYP = 'charm-master.pending';
+  var KEYP = 'charm-master.pending' + SFX;
   function loadPend() { try { return localStorage.getItem(KEYP); } catch (e) { return null; } }
   function savePend(v) { try { if (v) localStorage.setItem(KEYP, v); else localStorage.removeItem(KEYP); } catch (e) {} }
   function saveMe(v) { try { if (v) localStorage.setItem(KEY, v); else localStorage.removeItem(KEY); } catch (e) {} }
 
   var S = { db: null, ready: false, nodb: false, err: false, people: [], cards: {}, grants: [], trades: [], wipe: { step: 0, busy: false, msg: '', bad: false }, t: { give: '', want: '', busy: false, busyId: '', msg: '', bad: false, notice: null, open: false, tab: 'you', filter: '', shown: 12 }, g: { phase: 'idle' }, tour: { open: false, step: 0 }, tourAuto: false, me: loadMe(), pend: loadPend(), hd: { shown: 10, q: '' }, declined: false, joinMsg: '', counts: {}, mySets: 0, msg: '', bad: false };
   var unCard = null, cardFor = null, gateSig = '', msgTimer = null;
+  S.qs = { list: [], ready: false, q: '', open: '', msg: '', bad: false, busy: false }; var qSig = '';
 
   function inRound(p, r) { return !!(p.rounds && p.rounds[r] === true); }
   function eligible(p) { return p.role === 'admin' || inRound(p, CUR); }
@@ -1180,7 +1219,19 @@ textarea.field { resize: vertical; min-height: 110px; }
   }
 
   // ---- views ----
+  function questName(id) {
+    var q = S.qs.list.filter(function (x) { return x.id === id; })[0];
+    return q ? q.name : (id === 'main' ? 'Original Quest' : 'Quest');
+  }
   function render() {
+    var qv = !QID || location.hash === '#quests';
+    $('qbtn').textContent = QID ? '\u2694 ' + questName(QID) : 'Choose a quest';
+    $('v-quests').hidden = !qv;
+    if (qv) {
+      ['v-gate', 'v-card', 'v-home', 'v-grant', 'v-admin', 'v-trade', 'v-guide'].forEach(function (i) { $(i).hidden = true; });
+      $('tabs').innerHTML = ''; $('help').hidden = true; $('snd').hidden = true;
+      renderQuests(); return;
+    }
     if (!me() && S.pend && S.ready) {
       var ap = person(S.pend);
       if (ap && ap.status !== 'pending' && eligible(ap)) { S.me = ap.id; saveMe(ap.id); S.pend = null; savePend(null); gateSig = ''; location.hash = '#profile'; }
@@ -1560,13 +1611,13 @@ textarea.field { resize: vertical; min-height: 110px; }
 
   // ---- admin PIN: a four-digit PIN the admins choose, needed to make anyone an admin. Only a salted hash is stored. ----
   var PR = { id: '', busy: false, msg: '' };
-  function pinFailState() { try { return JSON.parse(localStorage.getItem('charm-master.pinfail') || '{}') || {}; } catch (e) { return {}; } }
+  function pinFailState() { try { return JSON.parse(localStorage.getItem('charm-master.pinfail' + SFX) || '{}') || {}; } catch (e) { return {}; } }
   function pinLockLeft() { var f = pinFailState(); return f.until && f.until > Date.now() ? Math.ceil((f.until - Date.now()) / 60000) : 0; }
   function pinFailed() {
     var f = pinFailState(), n = ((f.until && f.until <= Date.now()) ? 0 : (f.n || 0)) + 1;
-    try { localStorage.setItem('charm-master.pinfail', JSON.stringify(n >= 5 ? { n: 0, until: Date.now() + 10 * 60000 } : { n: n })); } catch (e) {}
+    try { localStorage.setItem('charm-master.pinfail' + SFX, JSON.stringify(n >= 5 ? { n: 0, until: Date.now() + 10 * 60000 } : { n: n })); } catch (e) {}
   }
-  function pinPassed() { try { localStorage.removeItem('charm-master.pinfail'); } catch (e) {} }
+  function pinPassed() { try { localStorage.removeItem('charm-master.pinfail' + SFX); } catch (e) {} }
   function hashPin(salt, pin) {
     var s = 'charm-master:' + salt + ':' + pin;
     if (window.crypto && crypto.subtle && window.TextEncoder) {
@@ -1621,7 +1672,7 @@ textarea.field { resize: vertical; min-height: 110px; }
     try { localStorage.setItem(k, JSON.stringify(n >= 5 ? { n: 0, until: Date.now() + 10 * 60000 } : { n: n })); } catch (e) {}
   }
   function passedK(k) { try { localStorage.removeItem(k); } catch (e) {} }
-  function passKey(id) { return 'charm-master.passfail.' + id; }
+  function passKey(id) { return 'charm-master.passfail' + SFX + '.' + id; }
   function makePass(code) { var salt = newSalt(); return hashPin(salt, code).then(function (h) { return { salt: salt, hash: h }; }); }
   function checkPass(p, code) {
     if (!p || !p.pass || !/^\d{6}$/.test(code)) return Promise.resolve(false);
@@ -2603,12 +2654,101 @@ textarea.field { resize: vertical; min-height: 110px; }
   });
   setInterval(function () { if (me() && route() === 'trade') render(); }, 60000);
 
+  // ---- Quests page ----
+  function joinedMap() { try { return JSON.parse(lsGet('charm-master.joined') || '{}') || {}; } catch (e) { return {}; } }
+  function markJoined(id) { var j = joinedMap(); j[id] = 1; try { localStorage.setItem('charm-master.joined', JSON.stringify(j)); } catch (e) {} }
+  function enterQuest(id) {
+    markJoined(id);
+    try { localStorage.setItem('charm-master.quest', id); } catch (e) {}
+    if (id === QID) { location.hash = '#profile'; render(); return; }
+    location.hash = ''; location.reload();
+  }
+  function renderQuests() {
+    var Q = S.qs, j = joinedMap(), term = Q.q.trim().toLowerCase();
+    var sig = [Q.ready, S.nodb, Q.q, Q.open, Q.msg, Q.busy, QID, Object.keys(j).join(','), Q.list.map(function (x) { return x.id + x.name; }).join('|')].join('#');
+    if (sig === qSig) return;
+    qSig = sig;
+    var el = $('q-list');
+    $('q-new').style.display = S.nodb ? 'none' : '';
+    if (S.nodb) { el.innerHTML = '<p class="muted">Saved data is not available in this view, so quests cannot load.</p>'; return; }
+    if (!Q.ready) { el.innerHTML = '<p class="muted">Gathering the quests…</p>'; return; }
+    var rows = Q.list.filter(function (x) { return !term || x.name.toLowerCase().indexOf(term) >= 0; });
+    if (!rows.length) { el.innerHTML = '<p class="muted">' + (Q.list.length ? 'No quest matches that search.' : 'No quests yet. Start the first one below.') + '</p>'; return; }
+    el.innerHTML = rows.map(function (x) {
+      var cur = x.id === QID, joined = !!j[x.id] || cur;
+      var d = x.createdAt ? new Date(x.createdAt) : null;
+      var sub = x.nopass ? 'The original group' : (d && !isNaN(d) ? 'Started ' + d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : 'Quest');
+      var btn = cur ? '<button type="button" class="btn2" data-qact="enter" data-q="' + esc(x.id) + '">Back to quest</button>'
+        : joined || x.nopass ? '<button type="button" class="btn2" data-qact="enter" data-q="' + esc(x.id) + '">Enter</button>'
+        : '<button type="button" class="btn2" data-qact="join" data-q="' + esc(x.id) + '">Join</button>';
+      var form = (Q.open === x.id && !joined && !x.nopass) ?
+        '<form class="inline-form qform" data-qform="' + esc(x.id) + '" autocomplete="off"><label class="sr" for="qp-' + esc(x.id) + '">Password for ' + esc(x.name) + '</label>' +
+        '<input id="qp-' + esc(x.id) + '" class="field" type="password" maxlength="40" placeholder="Quest password" autocomplete="off" required>' +
+        '<button type="submit" class="btn"' + (Q.busy ? ' disabled' : '') + '>Enter quest</button>' +
+        (Q.msg ? '<div class="msg bad" role="alert" style="flex-basis:100%">' + esc(Q.msg) + '</div>' : '') + '</form>' : '';
+      return '<div class="qitem"><div class="lbrow' + (cur ? ' you' : '') + '"><div class="lbname"><div class="nm"><span class="t">' + esc(x.name) + '</span>' +
+        (cur ? '<span class="youtag">Current</span>' : joined ? '<span class="qtag">Joined</span>' : '') + '</div><span class="rtitle">' + esc(sub) + '</span></div>' +
+        '<div style="margin-left:auto">' + btn + '</div></div>' + form + '</div>';
+    }).join('');
+    if (Q.open) { var f = el.querySelector('.qform input'); if (f && document.activeElement !== f) { try { f.focus(); } catch (e) {} } }
+  }
+  $('q-search').addEventListener('input', function (e) { S.qs.q = e.target.value; render(); });
+  $('q-list').addEventListener('click', function (e) {
+    var b = e.target.closest('button[data-qact]'); if (!b) return;
+    var id = b.getAttribute('data-q');
+    if (b.getAttribute('data-qact') === 'enter') { enterQuest(id); return; }
+    S.qs.open = id; S.qs.msg = ''; render();
+  });
+  $('q-list').addEventListener('submit', function (e) {
+    e.preventDefault();
+    var f = e.target.closest('form[data-qform]'); if (!f || S.qs.busy) return;
+    var id = f.getAttribute('data-qform'), q = S.qs.list.filter(function (x) { return x.id === id; })[0], pw = f.querySelector('input').value, k = 'charm-master.qfail.' + id;
+    if (!q || !q.pass) return;
+    var left = lockLeftK(k);
+    if (left) { S.qs.msg = 'Too many wrong tries. Try again in ' + left + ' minute' + (left === 1 ? '' : 's') + '.'; render(); return; }
+    S.qs.busy = true; render();
+    hashPin(q.pass.salt, pw).then(function (h) {
+      S.qs.busy = false;
+      if (h === q.pass.hash) { passedK(k); enterQuest(id); return; }
+      failedK(k); var l2 = lockLeftK(k);
+      S.qs.msg = l2 ? 'Too many wrong tries. Try again in ' + l2 + ' minutes.' : 'That is not the password for this quest.'; render();
+    });
+  });
+  $('q-new').addEventListener('submit', function (e) {
+    e.preventDefault();
+    var nm = $('qn-name').value.trim().replace(/\s+/g, ' '), p1 = $('qn-pass').value, p2 = $('qn-pass2').value, m = $('q-newmsg'), btn = e.target.querySelector('button');
+    if (nm.length < 3) { m.textContent = 'Give the quest a name of at least three characters.'; return; }
+    if (S.qs.list.some(function (x) { return x.name.toLowerCase() === nm.toLowerCase(); })) { m.textContent = 'A quest with that name already exists. Choose another name.'; return; }
+    if (p1.length < 4) { m.textContent = 'The quest password needs at least four characters.'; return; }
+    if (p1 !== p2) { m.textContent = 'The two passwords do not match.'; return; }
+    if (!S.raw) { m.textContent = 'Saved data is not available right now.'; return; }
+    m.textContent = ''; btn.disabled = true;
+    var id = slug(nm).replace(/-/g, ''), salt = newSalt();
+    hashPin(salt, p1).then(function (h) {
+      return S.raw.doc('quests/' + id).set({ name: nm, nameLower: nm.toLowerCase(), pass: { salt: salt, hash: h }, createdAt: new Date().toISOString() });
+    }).then(function () { enterQuest(id); }, function () { btn.disabled = false; m.textContent = 'That could not be saved. Check your connection and try again.'; });
+  });
+
   // ---- start ----
   render();
   var use = (window.claude && window.claude.use) ? window.claude.use('db') : Promise.resolve(null);
-  use.then(function (db) {
-    if (!db) { S.ready = true; S.nodb = true; render(); return; }
+  use.then(function (raw) {
+    if (!raw) { S.ready = true; S.nodb = true; S.qs.ready = true; render(); return; }
+    S.raw = raw;
+    var db = { collection: function (n) { return raw.collection(QP + n); }, doc: function (pth) { return raw.doc(QP + pth); } };
     S.db = db;
+    var legacy = false;
+    function qlist(snap) {
+      var l = snap.docs.map(function (d) { var x = d.data() || {}; return { id: d.id, name: String(x.name || 'Quest'), createdAt: String(x.createdAt || ''), pass: (x.pass && typeof x.pass.salt === 'string' && typeof x.pass.hash === 'string') ? x.pass : null }; })
+        .filter(function (x) { return x.pass; });
+      if (legacy) l.push({ id: 'main', name: 'Original Quest', createdAt: '', pass: null, nopass: true });
+      S.qs.list = l.sort(function (a, b) { return a.name.localeCompare(b.name); });
+      S.qs.ready = true; render();
+    }
+    raw.collection('people').get().then(function (sn) { legacy = sn.docs.length > 0; }, function () {}).then(function () {
+      raw.collection('quests').onSnapshot(qlist, function () { S.qs.ready = true; S.qs.list = legacy ? [{ id: 'main', name: 'Original Quest', createdAt: '', pass: null, nopass: true }] : []; render(); });
+    });
+    if (QID) {
     db.collection('cards').where('roundId', '==', CUR).onSnapshot(function (snap) {
       var all = {};
       snap.docs.forEach(function (d) {
@@ -2645,7 +2785,8 @@ textarea.field { resize: vertical; min-height: 110px; }
       }).sort(function (a, b) { return a.name.localeCompare(b.name); });
       S.ready = true; render();
     }, function () { S.ready = true; S.err = true; render(); });
-  }).catch(function () { S.ready = true; S.nodb = true; render(); });
+    }
+  }).catch(function () { S.ready = true; S.nodb = true; S.qs.ready = true; render(); });
 
   // Decorative embers
   var sky = $('sky');

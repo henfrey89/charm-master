@@ -15,5 +15,20 @@ service cloud.firestore {
     }
     match /_config/{id} { allow read, write: if signedIn(); }
   match /_leases/{id} { allow read, write: if signedIn(); }
+    // Quests: a registry of quests, plus one set of collections per quest, named "<questId>~people" and so on.
+    match /quests/{id} {
+      allow read: if signedIn();
+      allow create, update: if signedIn() && request.resource.data.name is string
+        && request.resource.data.name.size() >= 3 && request.resource.data.name.size() <= 40;
+    }
+    match /{col}/{id} {
+      allow read, delete: if signedIn() && col.matches('.+~(people|cards|trades|grants|_config)');
+      allow create, update: if signedIn() && (
+        col.matches('.+~(cards|trades|_config)')
+        || (col.matches('.+~people') && request.resource.data.name is string
+            && request.resource.data.name.size() > 0 && request.resource.data.name.size() <= 60)
+        || (col.matches('.+~grants') && request.resource.data.reason is string
+            && request.resource.data.reason.size() <= 140));
+    }
   }
 }
