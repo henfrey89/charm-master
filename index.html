@@ -390,7 +390,8 @@ textarea.field { resize: vertical; min-height: 110px; }
 .rvin { opacity: 0; animation: rvin 0.7s ease-out var(--d, 0s) both; }
 @keyframes rvin { from { opacity: 0; transform: translateY(14px) scale(0.96); } to { opacity: 1; transform: none; } }
 
-.helpbtn { flex: 0 0 36px; width: 36px; height: 36px; border-radius: 50%; border: 1.5px solid var(--bronze); background: rgba(0, 0, 0, 0.45); color: var(--gold-hi); font: 700 17px var(--display); cursor: pointer; }
+.helpbtn { flex: 0 0 36px; width: 36px; height: 36px; border-radius: 50%; border: 1.5px solid var(--bronze); background: rgba(0, 0, 0, 0.45); color: var(--gold-hi); font: 700 17px var(--display); cursor: pointer; display: inline-flex; align-items: center; justify-content: center; padding: 0; line-height: 1; }
+.helpbtn svg { display: block; }
 .helpbtn:hover { border-color: var(--gold); background: rgba(232, 195, 106, 0.12); }
 .tour { position: fixed; inset: 0; z-index: 200; display: flex; align-items: center; justify-content: center; overflow-y: auto; overflow-x: hidden; padding: max(20px, env(safe-area-inset-top, 0px)) max(16px, env(safe-area-inset-right, 0px)) max(20px, env(safe-area-inset-bottom, 0px)) max(16px, env(safe-area-inset-left, 0px)); background: radial-gradient(ellipse at 50% 38%, #2a1a55 0%, #0b0720 55%, #04030c 100%); }
 .tour[hidden] { display: none; }
@@ -1865,6 +1866,27 @@ textarea.field { resize: vertical; min-height: 110px; }
       if (ly.drum) { drum(ctx, dest, t, 0.32); drum(ctx, dest, t + 3 * E8, 0.22); jingle(ctx, dest, t + 2 * E8, 0.06); jingle(ctx, dest, t + 5 * E8, 0.06); jingle(ctx, dest, t + E8, 0.03); jingle(ctx, dest, t + 4 * E8, 0.03); }
       if (ly.melody) MEL[i].forEach(function (n) { flute(ctx, dest, hz(n[1]), t + n[0] * E8, n[2] * E8 * 0.95, 0.085); pluck(ctx, dest, hz(n[1] - 12), t + n[0] * E8, 0.6, 0.06); });
     }
+    // Background tune: its own tavern-style bardcore piece (E dorian, 16 bars, jiggy 6/8), separate from the intro music.
+    var BARA = 0.96, EA = 0.16;
+    var CHA = [[40, 59, 64, 67], [38, 57, 62, 66], [40, 59, 64, 67], [43, 59, 62, 67], [40, 59, 64, 67], [38, 57, 62, 66], [36, 55, 60, 64], [40, 59, 64, 67],
+      [36, 55, 60, 64], [43, 59, 62, 67], [38, 57, 62, 66], [40, 59, 64, 67], [36, 55, 60, 64], [43, 59, 62, 67], [38, 57, 62, 66], [40, 59, 64, 67]];
+    var MELA = [
+      [[0, 76, 2], [2, 74, 1], [3, 71, 1], [4, 67, 2]], [[0, 74, 3], [3, 69, 1], [4, 71, 1], [5, 74, 1]],
+      [[0, 76, 2], [2, 79, 2], [4, 76, 2]], [[0, 79, 2], [2, 74, 1], [3, 71, 1], [4, 74, 2]],
+      [[0, 76, 1], [1, 74, 1], [2, 71, 2], [4, 67, 2]], [[0, 69, 2], [2, 74, 2], [4, 78, 2]],
+      [[0, 76, 3], [3, 72, 1], [4, 67, 2]], [[0, 71, 3], [3, 64, 3]],
+      [[0, 79, 2], [2, 76, 1], [3, 72, 1], [4, 76, 2]], [[0, 74, 2], [2, 79, 2], [4, 74, 1], [5, 71, 1]],
+      [[0, 78, 2], [2, 74, 1], [3, 69, 1], [4, 74, 2]], [[0, 76, 3], [3, 71, 1], [4, 67, 1], [5, 71, 1]],
+      [[0, 72, 1], [1, 76, 1], [2, 79, 2], [4, 84, 2]], [[0, 83, 2], [2, 79, 1], [3, 74, 1], [4, 71, 2]],
+      [[0, 69, 1], [1, 71, 1], [2, 74, 2], [4, 78, 2]], [[0, 76, 3], [3, 76, 3]]
+    ];
+    function barA(ctx, dest, t, i) {
+      var c = CHA[i], k;
+      pluck(ctx, dest, hz(c[0]), t, 0.9, 0.2); pluck(ctx, dest, hz(c[0] + 7), t + 3 * EA, 0.8, 0.14);
+      [[1, 1], [2, 2], [4, 3], [5, 2]].forEach(function (a) { pluck(ctx, dest, hz(c[a[1]]), t + a[0] * EA, 0.45, 0.07); });
+      drum(ctx, dest, t, 0.3); drum(ctx, dest, t + 3 * EA, 0.2); jingle(ctx, dest, t + 2 * EA, 0.05); jingle(ctx, dest, t + 5 * EA, 0.05);
+      MELA[i].forEach(function (n) { flute(ctx, dest, hz(n[1]), t + n[0] * EA, n[2] * EA * 0.95, 0.09); pluck(ctx, dest, hz(n[1] - 12), t + n[0] * EA, 0.5, 0.05); });
+    }
     var LAND = [74, 76, 79, 81, 83, 86, 88, 91], SPARK = [86, 88, 91, 93, 95];
     function introSfx(ctx, dest, t0) {
       function ok(t) { return t >= ctx.currentTime - 0.03; }
@@ -1896,8 +1918,18 @@ textarea.field { resize: vertical; min-height: 110px; }
         return L.ctx.resume().then(function () { return L.ctx.state === 'running'; }, function () { return false; });
       } catch (e) { return Promise.resolve(false); }
     }
+    function startAmbient() {
+      if (L.sess) return;
+      var ctx = L.ctx, now = ctx.currentTime;
+      L.amb = true; L.sess = ctx.createGain(); L.sess.gain.value = 1; L.sess.connect(L.bus.music);
+      L.nextT = now + 0.15; L.nextBar = 0; L.dr = null;
+      L.timer = setInterval(function () {
+        while (L.nextT < ctx.currentTime + 0.5) { barA(ctx, L.sess, L.nextT, L.nextBar % 16); L.nextT += BARA; L.nextBar++; }
+      }, 120);
+    }
     function startMusic(gridStart, melodyAt) {
       if (L.sess) return;
+      L.amb = false;
       var ctx = L.ctx, now = ctx.currentTime;
       L.sess = ctx.createGain(); L.sess.gain.value = 1; L.sess.connect(L.bus.music);
       L.dr = drone(ctx, L.sess, now);
@@ -1932,10 +1964,12 @@ textarea.field { resize: vertical; min-height: 110px; }
       cutIntro();
       unlock().then(function (ok) {
         if (!ok || tok !== L.tok || !S.tour.open || S.tour.step !== 0) return;
+        if (L.sess && L.amb) stopMusic(0.3);
         var ctx = L.ctx, t0 = ctx.currentTime - (performance.now() - L.vis) / 1000;
         L.intro = ctx.createGain(); L.intro.connect(L.bus.sfx);
         introSfx(ctx, L.intro, t0);
         startMusic(t0 + 0.58, t0 + 4.0);
+        setMusicLevel(0.5);
       });
     }
     function scroll() {
@@ -1943,14 +1977,16 @@ textarea.field { resize: vertical; min-height: 110px; }
       var tok = ++L.tok; cutIntro();
       unlock().then(function (ok) {
         if (!ok || tok !== L.tok || !S.tour.open || S.tour.step < 1) return;
+        if (L.sess && L.amb) stopMusic(0.3);
         var ctx = L.ctx; L.melodyAt = 0;
         rustle(ctx, L.bus.sfx, ctx.currentTime + 0.05);
         startMusic(ctx.currentTime, 0);
+        setMusicLevel(0.5);
       });
     }
     function sfxNow(fn) { if (!L.on) return; unlock().then(function (ok) { if (ok) fn(L.ctx, L.bus.sfx, L.ctx.currentTime + 0.02); }); }
     function ui() {
-      var on = L.on, svg = '<svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 8 H6 L11 4 V16 L6 12 H3Z" fill="currentColor"/>' + (on ? '<path d="M14 7 C15.5 8.5 15.5 11.5 14 13"/><path d="M16.5 4.5 C19 7.5 19 12.5 16.5 15.5"/>' : '<path d="M14 7 L19 13 M19 7 L14 13"/>') + '</svg>';
+      var on = L.on, svg = '<svg width="18" height="18" viewBox="1 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 8 H6 L11 4 V16 L6 12 H3Z" fill="currentColor"/>' + (on ? '<path d="M14 7 C15.5 8.5 15.5 11.5 14 13"/><path d="M16.5 4.5 C19 7.5 19 12.5 16.5 15.5"/>' : '<path d="M14 7 L19 13 M19 7 L14 13"/>') + '</svg>';
       Array.prototype.forEach.call(document.querySelectorAll('[data-snd]'), function (b) {
         b.innerHTML = svg; b.setAttribute('aria-pressed', on ? 'true' : 'false');
         b.setAttribute('aria-label', on ? 'Sound on. Turn sound off' : 'Sound off. Turn sound on'); b.title = on ? 'Sound on' : 'Sound off';
@@ -1962,16 +1998,35 @@ textarea.field { resize: vertical; min-height: 110px; }
       ui();
       if (!L.on) { stopMusic(0.25); cutIntro(); L.tok++; }
       else if (S.tour.open) { if (S.tour.step === 0) intro(); else scroll(); }
-      else sfxNow(function (c, d, t) { bell(c, d, hz(81), t, 0.1, 1.2); });
+      else { sfxNow(function (c, d, t) { bell(c, d, hz(81), t, 0.1, 1.2); }); ambient(); }
     }
-    function gesture() { if (L.on && S.tour.open && !L.sess) { if (S.tour.step === 0) intro(); else scroll(); } }
+    // Background music: keeps playing through the whole app, quieter than during the welcome tour.
+    function setMusicLevel(v) { try { if (L.bus) L.bus.music.gain.setTargetAtTime(v, L.ctx.currentTime, 0.6); } catch (e) {} }
+    function ambient() {
+      if (!L.on || S.tour.open) return;
+      unlock().then(function (ok) {
+        if (!ok || !L.on || S.tour.open) return;
+        if (!L.sess) startAmbient();
+        setMusicLevel(0.42);
+      });
+    }
+    function afterTour() {
+      cutIntro(); L.tok++; L.vis = 0;
+      if (L.sess && !L.amb) stopMusic(1.2);
+      ambient();
+    }
+    function gesture() {
+      if (!L.on) return;
+      if (S.tour.open) { if (!L.sess) { if (S.tour.step === 0) intro(); else scroll(); } }
+      else if (!L.sess) ambient();
+    }
     ['pointerdown', 'keydown'].forEach(function (ev) { document.addEventListener(ev, gesture, true); });
     document.addEventListener('visibilitychange', function () {
       if (!L.ctx) return;
       if (document.hidden) L.ctx.suspend().catch(function () {}); else if (L.on) L.ctx.resume().catch(function () {});
     });
     return {
-      intro: intro, scroll: scroll, ui: ui, toggle: toggle, stop: function () { stopMusic(1.0); cutIntro(); L.tok++; L.vis = 0; },
+      intro: intro, scroll: scroll, ui: ui, toggle: toggle, stop: afterTour,
       markVisual: function () { L.vis = performance.now(); },
       ping: function () { sfxNow(ping); }, fanfare: function () { sfxNow(fan); },
       isOn: function () { return L.on; },
@@ -2080,8 +2135,8 @@ textarea.field { resize: vertical; min-height: 110px; }
   function closeTour(goTo) {
     if (!S.tour.open) return;
     clearTimeout(tourTm);
-    Snd.stop();
     S.tour.open = false; $('tour').hidden = true; $('tour').innerHTML = ''; document.body.style.overflow = '';
+    Snd.stop();
     var p = me();
     if (p && S.db && p.welcomed !== CUR) {
       p.welcomed = CUR;
