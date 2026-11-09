@@ -674,6 +674,11 @@ textarea.field { resize: vertical; min-height: 110px; }
   .bar .brand .gtext { font-size: 17px; letter-spacing: 0.06em; }
   .bar .gutter { gap: 8px 10px; }
 }
+/* ---- arrivals overlay ---- */
+.arrive { position: fixed; inset: 0; z-index: 80; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px; text-align: center; padding: 24px 20px calc(24px + env(safe-area-inset-bottom, 0px)); overflow-y: auto; background: radial-gradient(ellipse at 50% 30%, #2a1a5c, #0a0614 72%); }
+.arrive[hidden] { display: none; }
+.arrive .stage-note { max-width: 400px; }
+body.stage-live { overflow: hidden; }
 /* ---- mobile: bottom tab bar ---- */
 .pl-m, .state .ss, .rrole, .rtog { display: none; }
 .rline { display: contents; }
@@ -1249,6 +1254,8 @@ footer.ground .gutter { align-items: center; row-gap: 8px; }
   </footer>
 </div>
 
+<div class="arrive" id="arrive" role="dialog" aria-modal="true" aria-label="Something arrived" hidden></div>
+
 <div class="tour" id="tour" role="dialog" aria-modal="true" aria-label="Welcome tour" hidden></div>
 
 <script>
@@ -1542,7 +1549,75 @@ footer.ground .gutter { align-items: center; row-gap: 8px; }
     else if (r === 'home') renderHome(m);
     else if (r === 'grant') renderGrant(m);
     else renderCard(m);
+    if (m) checkArrivals(m);
   }
+
+  // ---- arrivals: a reveal for charms and swaps that landed while you were away ----
+  var A = { q: [], i: 0, open: false };
+  function seenKey(m) { return 'charm-master.seen' + SFX + '.' + m.id; }
+  function getSeen(m) { try { return localStorage.getItem(seenKey(m)) || ''; } catch (e) { return ''; } }
+  function setSeen(m, iso) { try { localStorage.setItem(seenKey(m), iso); } catch (e) {} }
+  function arrivalsFor(m) {
+    var seen = getSeen(m);
+    if (!seen) { setSeen(m, new Date().toISOString()); return []; }
+    var out = [];
+    S.grants.forEach(function (g) { if (g.toId === m.id && g.byId !== m.id && g.at > seen) out.push({ kind: 'grant', at: g.at, g: g }); });
+    S.trades.forEach(function (t) { if (t.fromId === m.id && t.status === 'done' && t.toId && t.resolvedAt > seen) out.push({ kind: 'swap', at: t.resolvedAt, t: t }); });
+    return out.sort(function (a, b) { return a.at < b.at ? -1 : a.at > b.at ? 1 : 0; });
+  }
+  function checkArrivals(m) {
+    if (!S.ready || A.open || !S.g || S.g.phase !== 'idle' || !$('tour').hidden) return;
+    var ae = document.activeElement;
+    if (ae && /^(INPUT|TEXTAREA|SELECT)$/.test(ae.tagName)) return;
+    var list = arrivalsFor(m);
+    if (!list.length) return;
+    A.q = list; A.i = 0; A.open = true; showArrival();
+  }
+  function openAck(r) { A.q = [{ kind: 'swapdone', r: r }]; A.i = 0; A.open = true; showArrival(); }
+  function showArrival() {
+    var it = A.q[A.i], el = $('arrive'), c, eyebrow, note, extra = '';
+    if (!it) { closeArrivals(); return; }
+    if (it.kind === 'grant') {
+      c = charmByKey(it.g.charm); var by = person(it.g.byId);
+      eyebrow = esc(by ? by.name : 'A teammate') + ' gave you';
+      note = it.g.reason ? 'For: ' + esc(it.g.reason) : 'A charm for something you did well.';
+    } else if (it.kind === 'swap') {
+      c = charmByKey(it.t.want);
+      eyebrow = 'Your offer was taken';
+      note = '<strong>' + esc(nameOf(it.t.toId)) + '</strong> took your ' + short(it.t.give) + ' and gave you a ' + c.name + '.';
+    } else {
+      c = charmByKey(it.r.got);
+      eyebrow = 'Swap complete';
+      note = 'You gave ' + short(it.r.gave) + ' to <strong>' + esc(nameOf(it.r.from)) + '</strong> and received a ' + c.name + '.';
+      if (it.r.done) extra = '<div class="rankup rvin" style="--d:1.8s">' + avatar(rankIdx(it.r.sets)) + '<span>Set complete! You are now ' + esc(rankFor(it.r.sets).name) + '</span></div>';
+    }
+    var left = A.q.length - A.i - 1;
+    el.innerHTML = revealBurst(c) +
+      '<div class="eyebrow rvin" style="font-size:13px; color:var(--teal); --d:0.75s">' + eyebrow + '</div>' +
+      '<div class="stage-title rvin" style="font-size:36px; color:' + c.tint + '; --d:0.95s; text-shadow:0 0 24px ' + c.glow + '">' + c.name + '</div>' +
+      '<div class="rvin" style="color:var(--green); --d:1.15s">Use: ' + c.power + '</div>' +
+      '<div class="stage-note rvin" style="--d:1.35s">' + note + '</div>' + extra +
+      '<div class="stage-btns rvin" style="--d:' + (extra ? '2.2s' : '1.6s') + '"><button type="button" class="btn" id="arrive-next">' + (left > 0 ? 'Next (' + left + ' more)' : 'Lovely') + '</button>' +
+      (left === 0 ? '<a class="btn2" href="#profile" id="arrive-bracelet">See my bracelet</a>' : '') + '</div>';
+    el.hidden = false;
+    document.body.classList.add('stage-live');
+    var nb = $('arrive-next'); if (nb) nb.focus();
+  }
+  function closeArrivals() {
+    var m = me(), mx = '';
+    A.q.forEach(function (it) { if (it.at && it.at > mx) mx = it.at; });
+    if (m && mx) setSeen(m, mx);
+    A.open = false; A.q = []; A.i = 0;
+    $('arrive').hidden = true; $('arrive').innerHTML = '';
+    document.body.classList.toggle('stage-live', !!(S.g && S.g.phase !== 'idle'));
+    render();
+  }
+  document.addEventListener('click', function (e) {
+    if (!A.open) return;
+    if (e.target.closest && e.target.closest('#arrive-next')) { A.i++; if (A.i >= A.q.length) closeArrivals(); else showArrival(); }
+    else if (e.target.closest && e.target.closest('#arrive-bracelet')) closeArrivals();
+  });
+  document.addEventListener('keydown', function (e) { if (A.open && e.key === 'Escape') closeArrivals(); });
 
   // ---- granting ----
   function charmByKey(k) { for (var i = 0; i < CHARMS.length; i++) if (CHARMS[i].k === k) return CHARMS[i]; return null; }
@@ -2966,6 +3041,7 @@ footer.ground .gutter { align-items: center; row-gap: 8px; }
         S.t.busyId = '';
         S.t.notice = { text: 'Swapped! You gave ' + charmByKey(r.gave).name + ' to ' + nameOf(r.from) + ' and received ' + charmByKey(r.got).name + '.' + (r.done ? ' Set complete, you are now ' + rankFor(r.sets).name + '!' : ''), up: r.done ? rankIdx(r.sets) : -1 };
         render();
+        openAck(r);
       }, fail);
     } else if (act === 't-cancel') {
       terminal(id, 'cancelled', m.id, 'fromId').then(function () { S.t.busyId = ''; render(); }, fail);

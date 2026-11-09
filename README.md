@@ -50,6 +50,9 @@ A **quest** is a separate group running its own copy of the game: its own roster
 ### Recent Deeds feed
 The home page has a **Recent Deeds** feed under the leaderboard: who gave whom which charm, with the reason and date, newest first, for the current round in your quest. It shows eight at a time with a Show more button. When granting, a tick-box **Show this on the team feed** (on by default) lets the giver keep a charm private. Private charms still reach the recipient's profile and still count for ranks, Most Generous and achievements; they just do not appear in the feed (stored as `priv: true` on the grant). Your profile's **Latest Deeds** is a separate personal list of charms you received.
 
+### Arrivals
+When you open the app and a charm has been granted to you, or someone has taken one of your Open Market offers, since you last looked, a full-screen reveal plays for each one (who gave it and why, or who took the swap). After you take a deal yourself, a "Swap complete" screen confirms what you gave and received. What you have already seen is remembered on that device only (`charm-master.seen`), so the first time you sign in on a device nothing replays.
+
 ### Achievements
 The profile page has an **Achievements** panel with nine goals, worked out from your activity in the current round, so they start again each month: First Charm, Open Hand (grant one), Thanked Five (grant to five different people), Well Loved (receive from three different people), Generous Soul (grant ten), Market Day (complete a swap), Nearly There (hold seven different charms), Set Complete and Charm Master. Locked ones show progress such as 2 / 5. They are calculated on the fly and nothing extra is stored.
 
