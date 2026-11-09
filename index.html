@@ -101,6 +101,10 @@ header.bar { position: relative; background: rgba(7, 9, 26, 0.94); border-bottom
 .bar .avatar { flex: 0 0 44px; }
 .bar .pill { white-space: nowrap; }
 .linkbtn { background: none; border: 0; padding: 0; margin-left: 8px; color: var(--blue, #7cc0ff); font: inherit; text-decoration: underline; cursor: pointer; }
+#v-privacy .priv { display: flex; flex-direction: column; gap: 12px; }
+#v-privacy h2 { font-family: var(--display); font-size: 20px; color: var(--gold-hi, #ffd86b); margin: 10px 0 0; }
+#v-privacy ul { margin: 0; padding-left: 20px; display: flex; flex-direction: column; gap: 6px; line-height: 1.5; }
+#v-privacy p { margin: 0; line-height: 1.55; }
 .qpill { text-decoration: none; max-width: 190px; overflow: hidden; text-overflow: ellipsis; display: block; color: #ffe39a; cursor: pointer; }
 .qpill:hover { border-color: var(--gold, #e8c36a); }
 .qitem .lbrow { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
@@ -950,6 +954,42 @@ textarea.field { resize: vertical; min-height: 110px; }
     </section>
   </div>
 
+  <div class="gutter view" id="v-privacy" hidden>
+    <section class="panel gate priv">
+      <div class="eyebrow">Charm Master</div>
+      <h1 class="gtext">Privacy</h1>
+      <p class="muted">Charm Master is an independent personal project, not run by or for any employer. This page says plainly what it stores and where. Last updated November 2026.</p>
+      <h2>What is stored</h2>
+      <ul>
+        <li>Your name, as you typed it, and whether you are an admin or a member.</li>
+        <li>A scrambled (salted hash) copy of your six-digit passcode. The passcode itself is never stored.</li>
+        <li>The charms you give and receive, with the reasons the giver wrote, and your swap offers on the Open Market.</li>
+        <li>Quest details: the quest name, a scrambled copy of the quest password, and a scrambled copy of the quest's admin PIN.</li>
+      </ul>
+      <p class="muted">It does not collect email addresses, phone numbers, locations, payment details or photos. There is no advertising and no analytics or tracking.</p>
+      <h2>What is kept on your device</h2>
+      <p class="muted">Small items in your browser's own storage so the app works: who you are in each quest you have joined, your sound setting, the quests you have joined, and counters that lock sign-in after too many wrong tries. Firebase also keeps a random anonymous identifier on your device, which the database needs to accept your requests. These are essential to the service and are not used to track you. You can clear them any time in your browser settings, which signs you out.</p>
+      <h2>Where it lives</h2>
+      <ul>
+        <li><strong>Database:</strong> Google Firebase (Firestore), in London (europe-west2).</li>
+        <li><strong>Website:</strong> GitHub Pages, with the address handled through Cloudflare.</li>
+        <li><strong>Fonts and code:</strong> loaded from Google's servers, so Google can see your IP address when the page loads.</li>
+      </ul>
+      <p class="muted">Because the data is stored in the UK, UK data protection rules apply to how it is handled, including when you use it from another country.</p>
+      <h2>Who can see it</h2>
+      <p class="muted">Anyone who has the link can see the names of people in a quest, and signed-in members can see the charms and reasons. The passcode and PIN checks stop casual misuse, not a determined technical person, so please do not write anything sensitive in a charm reason.</p>
+      <h2>Keeping and deleting your data</h2>
+      <ul>
+        <li>Data stays until it is removed. Admins can remove a person (their record, bracelets and open swap offers), wipe a month, or delete a whole quest.</li>
+        <li>If you are removed, charms you gave or received stay in other people's history, shown as from or to "A teammate". If you need those deleted as well, ask and they can be.</li>
+        <li>To see, correct or delete your data, ask the admin of your quest, or the person who runs Charm Master, and they will deal with it.</li>
+      </ul>
+      <h2>Who it is for</h2>
+      <p class="muted">Charm Master is meant for adults taking part in a team recognition game, with their agreement.</p>
+      <div><a class="btn2" href="#profile">Back to Charm Master</a></div>
+    </section>
+  </div>
+
   <div class="gutter view" id="v-quests" hidden>
     <div style="display:flex; flex-direction:column; gap:24px">
     <section class="panel gate">
@@ -1035,7 +1075,7 @@ textarea.field { resize: vertical; min-height: 110px; }
   <footer class="ground">
     <div class="gutter">
       <span class="note">Progress is saved and shared with the team. <button type="button" id="install" class="linkbtn" hidden>Install on your phone</button> <span id="install-tip" class="muted"></span></span>
-      <span>Rounds clear on the 1st of each month</span>
+      <span><a href="#privacy" class="linkbtn" style="margin-left:0; margin-right:14px">Privacy</a>Rounds clear on the 1st of each month</span>
     </div>
   </footer>
 </div>
@@ -1263,9 +1303,16 @@ textarea.field { resize: vertical; min-height: 110px; }
     return q ? q.name : (id === 'main' ? 'Original Quest' : 'Quest');
   }
   function render() {
-    var qv = !QID || location.hash === '#quests';
+    var pv = location.hash === '#privacy';
+    $('v-privacy').hidden = !pv;
+    var qv = !pv && (!QID || location.hash === '#quests');
     $('qbtn').textContent = QID ? 'Quest: ' + questName(QID) : 'Choose a quest';
     $('v-quests').hidden = !qv;
+    if (pv) {
+      ['v-gate', 'v-card', 'v-home', 'v-grant', 'v-admin', 'v-trade', 'v-guide', 'v-quests'].forEach(function (i) { $(i).hidden = true; });
+      $('tabs').innerHTML = ''; $('help').hidden = true; $('snd').hidden = true;
+      return;
+    }
     if (qv) {
       ['v-gate', 'v-card', 'v-home', 'v-grant', 'v-admin', 'v-trade', 'v-guide'].forEach(function (i) { $(i).hidden = true; });
       $('tabs').innerHTML = ''; $('help').hidden = true; $('snd').hidden = true;

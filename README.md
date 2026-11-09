@@ -156,6 +156,9 @@ When you change `firestore.rules` in this repo, also paste it into the Firebase 
 
 ---
 
+## Privacy
+The footer has a **Privacy** link (`#privacy`) that opens a plain-English page: what is stored (names, hashed passcodes, charms and reasons), what is kept on the device, where it lives (Firebase in London, GitHub Pages, Cloudflare DNS, Google fonts and code), who can see it, and how data is removed. There is no tracking or analytics, so there is no cookie banner. The wording is in `index.html` (the `v-privacy` section) and can be edited there. It is a good-faith summary, not legal advice.
+
 ## Security model
 
 Charm Master is built to be trust-based, for a team that knows each other.
