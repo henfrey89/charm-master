@@ -1,0 +1,2336 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<style>:root{color-scheme:light;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0;font:14px system-ui,sans-serif}img{max-width:100%}[hidden]{display:none!important}</style>
+<script src="firebase-config.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script>
+/* Connects the app to Firebase. The app itself was written against a small database interface;
+   this shim provides the same interface on top of Firestore, including the short-lived locks (acquire). */
+(function () {
+  var cfg = window.CHARM_FIREBASE, ready = null;
+  function lockable(fs, ref) {
+    ref.acquire = function (o) {
+      var lref = fs.collection('_leases').doc(ref.path.replace(/\//g, '__'));
+      return fs.runTransaction(function (tx) {
+        return tx.get(lref).then(function (s) {
+          var now = Date.now(), d = s.exists ? s.data() : null;
+          if (d && d.expiresAt > now && d.holder !== o.holder) return { acquired: false };
+          tx.set(lref, { holder: String(o.holder), expiresAt: now + (o.ttlMs || 5000) });
+          return { acquired: true };
+        });
+      }).catch(function () { return { acquired: false }; });
+    };
+    return ref;
+  }
+  function adapter(fs) {
+    return {
+      doc: function (p) { return lockable(fs, fs.doc(p)); },
+      collection: function (n) {
+        var c = fs.collection(n), od = c.doc.bind(c);
+        c.doc = function (id) { return lockable(fs, od(id)); };
+        return c;
+      }
+    };
+  }
+  function init() {
+    if (ready) return ready;
+    ready = new Promise(function (res) {
+      try {
+        if (!cfg || !cfg.apiKey || /PASTE/.test(cfg.apiKey) || !window.firebase) { res(null); return; }
+        firebase.initializeApp(cfg);
+        var fs = firebase.firestore();
+        fs.settings({ ignoreUndefinedProperties: true, experimentalAutoDetectLongPolling: true });
+        firebase.auth().signInAnonymously().then(function () { res(adapter(fs)); }, function (e) { console.error(e); res(null); });
+      } catch (e) { console.error(e); res(null); }
+    });
+    return ready;
+  }
+  window.claude = { use: function (n) { return n === 'db' ? init() : Promise.resolve(null); } };
+})();
+</script>
+<title>Charm Master</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;600;700&family=Open+Sans:wght@400;600;700&display=swap">
+<style>
+/* Layout: full-width night-forest backdrop, one centred column. Header bar, hero with set progress,
+   then the bracelet grid of 8 charm sockets and the Charm Master achievement. Single dark look by design. */
+:root {
+  --night: #170e09;
+  --panel: rgba(22, 13, 8, 0.88);
+  --ink: #f3eee2;
+  --muted: #c9bfa9;
+  --gold: #e8c36a;
+  --gold-hi: #ffd86b;
+  --gold-deep: #c8902f;
+  --bronze: #6b4f22;
+  --bronze-dim: #4a3a22;
+  --green: #7df08a;
+  --teal: #6ee8d8;
+  --red: #ff7b7b;
+  --navy: #001845;
+  --blue: #8fd0ff;
+  --display: 'Cinzel', Georgia, 'Times New Roman', serif;
+  --body: 'Open Sans', system-ui, -apple-system, 'Segoe UI', Arial, sans-serif;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--night); color: var(--ink); font-family: var(--body); font-size: 16px; line-height: 1.5; }
+a { color: var(--gold); }
+a:hover { color: #fff1c1; }
+:focus-visible { outline: 3px solid var(--gold-hi); outline-offset: 3px; }
+
+.page { position: relative; min-height: 100vh; overflow: hidden; display: flex; flex-direction: column; }
+.page > .gutter { flex: 1 0 auto; width: 100%; }
+.sky { position: absolute; inset: 0; pointer-events: none; overflow: hidden; background: linear-gradient(180deg, #2b1666 0px, #1c0f45 300px, #120a26 520px, #170e09 780px); }
+.sky .glow-a { position: absolute; top: -140px; left: 50%; width: 960px; height: 520px; margin-left: -480px; background: radial-gradient(closest-side, rgba(150, 110, 255, 0.5), transparent); }
+.sky .glow-b { position: absolute; top: 40px; right: -140px; width: 560px; height: 440px; background: radial-gradient(closest-side, rgba(40, 190, 210, 0.26), transparent); }
+.sky .stars { position: absolute; inset: 0 0 auto 0; height: 520px; opacity: 0.85; background-image: radial-gradient(1.5px 1.5px at 6% 10%, #fff, transparent), radial-gradient(1px 1px at 17% 28%, #fff, transparent), radial-gradient(2px 2px at 29% 8%, #ffe9a8, transparent), radial-gradient(1px 1px at 41% 20%, #fff, transparent), radial-gradient(1.5px 1.5px at 53% 12%, #fff, transparent), radial-gradient(2px 2px at 64% 26%, #ffe9a8, transparent), radial-gradient(1px 1px at 76% 9%, #fff, transparent), radial-gradient(1.5px 1.5px at 88% 22%, #fff, transparent), radial-gradient(1px 1px at 96% 14%, #fff, transparent), radial-gradient(1px 1px at 11% 44%, #fff, transparent), radial-gradient(1px 1px at 47% 40%, #fff, transparent), radial-gradient(1.5px 1.5px at 82% 42%, #fff, transparent); }
+.sky svg.trees { position: absolute; top: 260px; left: 0; width: 100%; height: 260px; -webkit-mask-image: linear-gradient(180deg, #000 45%, transparent 100%); mask-image: linear-gradient(180deg, #000 45%, transparent 100%); }
+.ember { position: absolute; border-radius: 50%; background: #ff9a3c; box-shadow: 0 0 10px 3px rgba(255, 154, 60, 0.7); animation: rise linear infinite; }
+@keyframes rise { 0% { transform: translateY(0); opacity: 0; } 15% { opacity: 0.9; } 100% { transform: translateY(-420px); opacity: 0; } }
+@keyframes bob { from { transform: translateY(0); } to { transform: translateY(-6px); } }
+
+.gutter { position: relative; max-width: 1180px; margin: 0 auto; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+header.bar { position: relative; background: rgba(7, 9, 26, 0.94); border-bottom: 2px solid var(--bronze); box-shadow: 0 4px 24px rgba(0, 0, 0, 0.6), 0 1px 0 rgba(232, 195, 106, 0.35); }
+.bar .gutter { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 20px; padding-block: 12px; }
+.bar .right { display: flex; align-items: center; gap: 12px; flex: 0 0 auto; margin-left: auto; }
+.bar .avatar { flex: 0 0 44px; }
+.bar .pill { white-space: nowrap; }
+.bar .tabs { gap: 0; }
+@media (max-width: 1240px) { .brand .gtext { font-size: 20px; letter-spacing: 0.08em; } .bar .gutter { column-gap: 14px; } }
+.brand { display: flex; align-items: center; gap: 12px; text-decoration: none; padding-block: 4px 2px; border-bottom: 3px solid transparent; }
+.brand[aria-current="page"] { border-bottom-color: var(--gold); }
+.gtext { font-family: var(--display); font-weight: 700; background: linear-gradient(180deg, #fff6cf 0%, #e8c36a 55%, #a8742a 100%); -webkit-background-clip: text; background-clip: text; color: transparent; filter: drop-shadow(0 2px 10px rgba(0, 0, 0, 0.65)); }
+.brand .gtext { font-size: 24px; letter-spacing: 0.12em; text-transform: uppercase; }
+.spacer { flex: 1 1 0; }
+.pill { display: flex; align-items: center; gap: 8px; padding: 8px 14px; border: 1px solid var(--bronze); background: rgba(0, 24, 69, 0.7); font-size: 13px; font-weight: 600; color: #cfe6ff; }
+.avatar { width: 44px; height: 44px; border-radius: 50%; border: 2px solid var(--gold); background: radial-gradient(circle at 50% 35%, #4a2f86, #1a0f2e); display: flex; align-items: center; justify-content: center; font-family: var(--display); font-weight: 700; color: #fff1c1; }
+
+main { position: relative; display: grid; grid-template-columns: minmax(0, 1fr) 340px; grid-template-areas: "hero progress" "bracelet side"; gap: 24px; padding-block: 32px 56px; }
+.eyebrow { font-family: var(--display); font-size: 14px; letter-spacing: 0.2em; text-transform: uppercase; color: var(--ink); }
+h1, h2 { margin: 0; text-wrap: balance; }
+h1 { font-size: clamp(32px, 4.4vw, 56px); line-height: 1.05; }
+h2 { font-size: clamp(26px, 3vw, 32px); }
+.muted { color: var(--muted); }
+.hero { grid-area: hero; min-width: 0; padding: 32px; display: flex; flex-direction: column; justify-content: center; gap: 14px; }
+.hero p { margin: 0; font-size: 18px; line-height: 1.6; max-width: 560px; }
+
+.panel { position: relative; background: var(--panel); border: 1px solid var(--bronze); border-radius: 2px; box-shadow: inset 0 0 0 1px rgba(232, 195, 106, 0.14), 0 10px 34px rgba(0, 0, 0, 0.55); }
+.panel::before, .panel::after { content: ""; position: absolute; width: 16px; height: 16px; pointer-events: none; }
+.panel::before { top: -2px; left: -2px; border-top: 3px solid var(--gold); border-left: 3px solid var(--gold); }
+.panel::after { bottom: -2px; right: -2px; border-bottom: 3px solid var(--gold); border-right: 3px solid var(--gold); }
+.progress { grid-area: progress; min-width: 0; padding: 24px 26px; display: flex; flex-direction: column; justify-content: center; gap: 16px; }
+.progress-head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }
+.progress-head .eyebrow { font-size: 13px; }
+.count { font-family: var(--display); font-size: 28px; font-weight: 700; color: var(--gold-hi); }
+.segs { display: flex; gap: 4px; padding: 4px; border: 2px solid var(--bronze); background: #0a0604; }
+.seg { flex: 1 1 0; height: 20px; border: 1px solid var(--bronze-dim); background: #1a100a; }
+.seg.on { border-color: #ffe9a6; background: linear-gradient(180deg, #ffe08a, var(--gold-deep)); box-shadow: 0 0 10px rgba(255, 216, 107, 0.6); }
+.stats { display: flex; gap: 32px; }
+.stat strong { display: block; font-family: var(--display); font-size: 30px; line-height: 1.2; }
+
+.bracelet { grid-area: bracelet; min-width: 0; padding: 30px; display: flex; flex-direction: column; gap: 24px; }
+.side { grid-area: side; min-width: 0; display: flex; flex-direction: column; gap: 24px; }
+.deeds { flex: 1 1 auto; padding: 26px; display: flex; flex-direction: column; gap: 14px; }
+.deed { display: flex; align-items: center; gap: 14px; padding-top: 12px; border-top: 1px solid rgba(232, 195, 106, 0.2); }
+.deed svg { flex: 0 0 44px; width: 44px; height: 44px; }
+.deed b { display: block; font-family: var(--display); font-size: 15px; }
+.deed span { display: block; font-size: 14px; line-height: 1.35; color: var(--muted); }
+.deed time { display: block; font-size: 12px; color: #9a9078; margin-top: 2px; }
+footer.ground { position: relative; border-top: 2px solid var(--bronze); background: rgba(7, 9, 26, 0.94); }
+.ground .gutter { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 6px 24px; padding-block: 16px; font-size: 13px; color: var(--muted); }
+@media (max-width: 960px) { main { grid-template-columns: minmax(0, 1fr); grid-template-areas: "hero" "progress" "bracelet" "side"; } }
+.bracelet-head { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 8px; }
+.rule { height: 1px; background: linear-gradient(90deg, transparent, #8a6a2f 20%, var(--gold) 50%, #8a6a2f 80%, transparent); }
+.grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 16px; }
+.card { position: relative; min-width: 0; padding: 22px 12px 18px; display: flex; flex-direction: column; align-items: center; gap: 6px; text-align: center; border-radius: 2px; }
+.card.has { background: linear-gradient(180deg, color-mix(in srgb, var(--glow) 18%, transparent), rgba(14, 8, 5, 0.95) 55%); border: 1px solid #8a6a2f; box-shadow: inset 0 0 0 1px rgba(232, 195, 106, 0.16), 0 0 24px color-mix(in srgb, var(--glow) 15%, transparent); }
+.card.miss { background: rgba(10, 6, 4, 0.7); border: 1px dashed rgba(232, 195, 106, 0.35); }
+.badge { position: absolute; top: 8px; right: 8px; min-width: 28px; padding: 2px 6px; background: linear-gradient(180deg, #f6d77a, var(--gold-deep)); border: 1px solid #ffe9a6; color: #2a1604; font-family: var(--display); font-weight: 700; font-size: 14px; }
+.socket { width: 112px; height: 112px; border-radius: 50%; display: flex; align-items: center; justify-content: center; background: radial-gradient(circle at 50% 38%, #2f1d44, #0c0610 75%); box-shadow: inset 0 0 20px rgba(0, 0, 0, 0.85); }
+.has .socket { border: 3px solid #c99a3e; box-shadow: inset 0 0 20px rgba(0, 0, 0, 0.85), 0 0 22px color-mix(in srgb, var(--glow) 33%, transparent); }
+.miss .socket { border: 3px solid var(--bronze-dim); }
+.charm { width: 78px; height: 78px; display: block; }
+.has .charm { filter: drop-shadow(0 0 8px var(--glow)); animation: bob 3s ease-in-out infinite alternate; }
+.miss .charm { filter: grayscale(1) brightness(0.45); opacity: 0.55; }
+.cname { font-family: var(--display); font-size: 17px; font-weight: 700; margin-top: 6px; }
+.kind { font-size: 12px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); }
+.use { font-size: 14px; line-height: 1.35; color: var(--green); min-height: 2.7em; }
+.state { font-size: 13px; font-weight: 700; margin-top: auto; padding-top: 6px; }
+.state.eq { color: var(--gold-hi); }
+.state.spare { color: var(--teal); }
+.state.none { color: var(--red); }
+
+.achievement { padding: 26px; display: flex; flex-direction: column; gap: 16px; }
+.ach-row { display: flex; align-items: center; gap: 16px; }
+.medal { flex: 0 0 64px; width: 64px; height: 64px; border-radius: 50%; border: 3px solid var(--gold); background: radial-gradient(circle at 50% 35%, #5a3a9a, #1a0f2e); display: flex; align-items: center; justify-content: center; box-shadow: 0 0 18px rgba(232, 195, 106, 0.45); }
+.ach-title { font-family: var(--display); font-size: 20px; font-weight: 700; color: var(--gold-hi); }
+.minis { display: flex; flex-wrap: wrap; gap: 6px; }
+.mini { width: 36px; height: 36px; }
+.mini.miss { filter: grayscale(1) brightness(0.45); opacity: 0.55; }
+.note { font-size: 13px; font-style: italic; color: var(--muted); }
+
+/* Overview page: leaderboard and explanation */
+.home { display: grid; grid-template-columns: minmax(0, 1fr); grid-template-areas: "intro" "board"; gap: 24px; align-items: start; }
+.home > section { min-width: 0; padding: 30px; display: flex; flex-direction: column; gap: 16px; }
+.home .intro { grid-area: intro; padding: 26px 30px; }
+.home .intro p { margin: 0; font-size: 17px; line-height: 1.6; max-width: 760px; }
+.home .board { grid-area: board; }
+.home .side { grid-area: side; padding: 20px 24px 26px; }
+.home .side .ttabs .ttab { padding: 0 12px; font-size: 13px; }
+.guidepage { padding: 14px 30px 30px; display: flex; flex-direction: column; gap: 20px; }
+.guidepage .steps, .guidepage .rules-list { max-width: 760px; }
+a.ttab { text-decoration: none; }
+.cguide { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 14px; }
+.citem { display: flex; align-items: center; gap: 14px; padding: 12px 14px; border: 1px solid rgba(232, 195, 106, 0.18); background: rgba(0, 0, 0, 0.4); }
+.citem b { display: block; font-family: var(--display); font-size: 17px; }
+.citem span { font-size: 14px; color: var(--green); }
+@media (max-width: 520px) { .guidepage { padding: 8px 20px 24px; } }
+.gpane { display: flex; flex-direction: column; gap: 14px; }
+.gpane[hidden] { display: none; }
+.lbtools .field { width: 100%; }
+
+@media (max-width: 520px) { .home > section { padding: 20px; } }
+.lbstats { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; }
+.lbstat { position: relative; display: flex; align-items: center; gap: 14px; padding: 16px 18px; border: 1px solid rgba(232, 195, 106, 0.3); background: linear-gradient(180deg, rgba(232, 195, 106, 0.08), rgba(0, 0, 0, 0.45)); box-shadow: inset 0 1px 0 rgba(255, 240, 190, 0.12); min-width: 0; }
+.lbstat .gi { flex: 0 0 40px; width: 40px; height: 40px; border-radius: 50%; display: flex; align-items: center; justify-content: center; border: 1.5px solid currentColor; background: rgba(0, 0, 0, 0.45); }
+.lbstat .tx { min-width: 0; }
+.lbstat strong { display: block; font-family: var(--display); font-size: 28px; line-height: 1.1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.lbstat span.l { display: block; margin-top: 4px; font-size: 11.5px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); }
+.lbrow { display: grid; grid-template-columns: 42px 46px minmax(0, 1fr) auto 76px; align-items: center; gap: 12px 14px; padding: 12px 16px; background: rgba(0, 0, 0, 0.4); border: 1px solid rgba(232, 195, 106, 0.18); }
+.lbrow.you { background: rgba(232, 195, 106, 0.1); border-color: rgba(232, 195, 106, 0.55); }
+.lbrow.first { border-color: var(--gold); }
+.rank { flex: 0 0 42px; width: 42px; height: 42px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-family: var(--display); font-weight: 700; font-size: 20px; border: 2px solid var(--bronze); background: #1a0f2e; }
+.lbrow.first .rank { border-color: #ffe9a6; background: linear-gradient(180deg, #f6d77a, var(--gold-deep)); color: #2a1604; }
+.lbname { flex: 1 1 140px; min-width: 0; display: flex; align-items: center; gap: 10px; font-family: var(--display); font-weight: 700; font-size: 19px; overflow-wrap: anywhere; }
+.youtag { padding: 1px 10px; background: linear-gradient(180deg, #f6d77a, var(--gold-deep)); color: #2a1604; font-weight: 700; font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase; }
+.gems { display: flex; gap: 9px; padding: 4px 6px; }
+.gem { width: 18px; height: 18px; transform: rotate(45deg); border: 2px solid var(--bronze-dim); }
+.gem.on { border-color: #ffe9a6; background: var(--gc); box-shadow: 0 0 10px var(--gc); }
+.lbscore { text-align: right; }
+.lbscore strong { display: block; font-family: var(--display); font-size: 24px; color: var(--gold-hi); line-height: 1.2; }
+.lbscore span { font-size: 13px; color: var(--muted); }
+.steps { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 14px; }
+.steps li { display: flex; align-items: flex-start; gap: 12px; font-size: 15px; line-height: 1.5; }
+.steps .n { flex: 0 0 30px; width: 30px; height: 30px; border-radius: 50%; border: 2px solid #c99a3e; display: flex; align-items: center; justify-content: center; font-family: var(--display); font-weight: 700; font-size: 14px; color: var(--gold-hi); }
+.steps b { font-family: var(--display); color: var(--gold-hi); }
+.guide { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 12px; }
+.guide div { display: flex; align-items: center; gap: 12px; padding: 10px 12px; border: 1px solid rgba(232, 195, 106, 0.18); background: rgba(0, 0, 0, 0.4); }
+.guide svg { flex: 0 0 44px; width: 44px; height: 44px; }
+.guide b { display: block; font-family: var(--display); font-size: 15px; }
+.guide span { font-size: 13px; line-height: 1.35; color: var(--green); }
+.rules ul { margin: 0; padding-left: 20px; display: flex; flex-direction: column; gap: 10px; font-size: 15px; line-height: 1.5; }
+.empty-note { margin: 0; font-size: 14px; line-height: 1.5; color: var(--muted); }
+/* Step 2: navigation, sign-in gate, admin roster */
+.tabs { display: flex; flex-wrap: wrap; gap: 4px; }
+.tab { display: inline-flex; align-items: center; min-height: 44px; padding: 0 16px; font-family: var(--display); font-weight: 700; font-size: 14px; letter-spacing: 0.1em; text-transform: uppercase; text-decoration: none; color: var(--ink); border-bottom: 3px solid transparent; }
+.tab:hover { color: var(--gold-hi); }
+.tab[aria-current="page"] { color: var(--gold-hi); border-bottom-color: var(--gold); }
+button.avatar { cursor: pointer; padding: 0; font-size: 16px; }
+button.avatar:hover { border-color: var(--gold-hi); }
+.view { padding-block: 32px 56px; }
+.btn, .btn2 { display: inline-flex; align-items: center; justify-content: center; min-height: 46px; padding: 0 24px; border-radius: 2px; font-family: var(--display); font-weight: 700; font-size: 15px; letter-spacing: 0.08em; text-transform: uppercase; cursor: pointer; }
+.btn { border: 1px solid #ffe9a6; background: linear-gradient(180deg, #f6d77a, var(--gold-deep)); color: #2a1604; box-shadow: 0 0 20px rgba(232, 195, 106, 0.35); }
+.btn:disabled { opacity: 0.6; cursor: default; }
+.btn2 { border: 1px solid #2a5fb0; background: var(--navy); color: var(--blue); }
+.btn2:hover { color: #fff; background: #06286e; }
+.field { min-height: 46px; padding: 10px 14px; border-radius: 2px; border: 1px solid var(--bronze); background: #0a0604; color: var(--ink); font-family: var(--body); font-size: 16px; }
+.sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+.gate { max-width: 680px; margin: 0 auto; padding: 32px; display: flex; flex-direction: column; gap: 16px; }
+.gate p { margin: 0; font-size: 17px; line-height: 1.6; }
+.pick { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; }
+.pick button { display: flex; align-items: center; gap: 12px; min-height: 56px; padding: 8px 14px; text-align: left; border: 1px solid var(--bronze); background: rgba(0, 0, 0, 0.4); color: var(--ink); font-family: var(--body); font-size: 17px; font-weight: 700; cursor: pointer; }
+.pick button:hover { border-color: var(--gold); background: rgba(232, 195, 106, 0.1); }
+.ravatar { flex: 0 0 40px; width: 40px; height: 40px; border-radius: 50%; border: 2px solid #8a6a2f; background: radial-gradient(circle at 50% 35%, #4a2f86, #1a0f2e); display: flex; align-items: center; justify-content: center; font-family: var(--display); font-weight: 700; font-size: 14px; color: #fff1c1; }
+.inline-form { display: flex; flex-wrap: wrap; gap: 12px; }
+.inline-form .field { flex: 1 1 220px; min-width: 0; }
+.roster { max-width: 860px; margin: 0 auto; padding: 32px; display: flex; flex-direction: column; gap: 16px; }
+.roster p { margin: 0; font-size: 17px; line-height: 1.6; }
+.rhead, .rrow { display: grid; grid-template-columns: minmax(0, 1fr) 72px 72px; align-items: center; gap: 8px 12px; }
+.rhead { padding: 0 14px; font-family: var(--display); font-size: 12px; letter-spacing: 0.2em; text-transform: uppercase; color: var(--muted); text-align: center; }
+.rhead span:first-child { text-align: left; }
+.rrow { padding: 12px 14px; border: 1px solid rgba(232, 195, 106, 0.22); background: rgba(0, 0, 0, 0.4); }
+.rwho { min-width: 0; display: flex; align-items: center; gap: 12px; }
+.rname { min-width: 0; display: flex; flex-direction: column; align-items: flex-start; gap: 4px; }
+.rname b { font-size: 17px; overflow-wrap: anywhere; }
+.chip { min-height: 28px; padding: 0 10px; border-radius: 2px; background: transparent; font-family: var(--display); font-size: 11px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; cursor: pointer; color: var(--muted); border: 1px solid var(--bronze-dim); }
+.chip.admin { color: var(--gold-hi); border-color: #c99a3e; }
+.chip:hover { color: #fff; border-color: var(--gold); }
+.rcell { display: flex; justify-content: center; }
+.sw { position: relative; width: 54px; height: 30px; padding: 0; border-radius: 15px; cursor: pointer; background: #1a100a; border: 1px solid var(--bronze); }
+.sw::before { content: ""; position: absolute; inset: -8px -6px; }
+.sw::after { content: ""; position: absolute; top: 4px; left: 4px; width: 20px; height: 20px; border-radius: 50%; background: #8a7a5c; transition: left 0.15s; }
+.sw[aria-checked="true"] { background: linear-gradient(180deg, #f6d77a, var(--gold-deep)); border-color: #ffe9a6; }
+.sw[aria-checked="true"]::after { left: 28px; background: #2a1604; }
+.msg { min-height: 22px; font-size: 14px; color: var(--teal); }
+.msg.bad { color: var(--red); }
+@media (max-width: 520px) { .gate, .roster { padding: 20px; } .ravatar { display: none; } }
+.av * { transform-box: view-box; }
+@keyframes flick { 0% { opacity: .95; transform: scale(1); } 8% { opacity: .55; transform: scale(.9); } 14% { opacity: 1; transform: scale(1.06); } 30% { opacity: .7; transform: scale(.95); } 42% { opacity: 1; transform: scale(1.04); } 55% { opacity: .5; transform: scale(.88); } 63% { opacity: .95; transform: scale(1); } 80% { opacity: .75; transform: scale(.96); } 100% { opacity: .95; transform: scale(1); } }
+@keyframes lampbright { 0%, 100% { filter: brightness(1); } 8% { filter: brightness(.7); } 14% { filter: brightness(1.25); } 30% { filter: brightness(.85); } 42% { filter: brightness(1.2); } 55% { filter: brightness(.65); } 63% { filter: brightness(1.15); } 80% { filter: brightness(.8); } }
+@keyframes swing { from { transform: rotate(-2deg); } to { transform: rotate(2deg); } }
+@keyframes spark { 0% { transform: translate(0, 0); opacity: 0; } 15% { opacity: 1; } 100% { transform: translate(3px, -18px); opacity: 0; } }
+@keyframes tw { 0%, 100% { opacity: .25; } 50% { opacity: 1; } }
+@keyframes flutter { from { transform: scaleX(1); } to { transform: scaleX(.88); } }
+@keyframes floaty { from { transform: translateY(0) scale(1); } to { transform: translateY(-4px) scale(1.2); } }
+@keyframes chase { 0%, 100% { opacity: .3; } 40% { opacity: 1; } }
+@keyframes wave { from { transform: rotate(-8deg); } to { transform: rotate(8deg); } }
+@keyframes pulsey { from { transform: scale(1); } to { transform: scale(1.3); } }
+@keyframes pulsel { from { transform: scale(1); } to { transform: scale(1.12); } }
+@keyframes breathe { 0%, 100% { filter: brightness(1); } 50% { filter: brightness(1.5); } }
+@keyframes bobmoon { from { transform: translateY(0) rotate(-4deg); } to { transform: translateY(-3px) rotate(5deg); } }
+@keyframes gemglow { 0%, 100% { filter: brightness(1); } 40% { filter: brightness(1.9) drop-shadow(0 0 3px #fff); } }
+@keyframes glint { 0%, 70%, 100% { opacity: 0; transform: scale(.3); } 85% { opacity: 1; transform: scale(1); } }
+@keyframes pop { 0% { transform: scale(.4); opacity: 0; } 60% { transform: scale(1.15); opacity: 1; } 100% { transform: scale(1); } }
+.w-glow { transform-origin: 60px 56px; animation: flick 2.3s linear infinite; }
+.w-body { animation: lampbright 2.3s linear infinite; }
+.w-swing { transform-origin: 60px 30px; animation: swing 4s ease-in-out infinite alternate; }
+.w-spark { animation: spark 2.4s ease-out infinite; }
+.w-spark.s2 { animation-delay: 1.1s; animation-duration: 2.9s; }
+.tw { animation: tw 2.2s ease-in-out infinite; }
+.a-page { transform-origin: 60px 64px; animation: flutter 2.6s ease-in-out infinite alternate; }
+.a-star { transform-origin: 60px 34px; animation: floaty 1.8s ease-in-out infinite alternate; }
+.a-stud { animation: chase 2s ease-in-out infinite; }
+.d-wand { transform-origin: 35px 86px; animation: wave 3.2s ease-in-out infinite alternate; }
+.d-star { transform-origin: 80px 40px; animation: pulsey 1.4s ease-in-out infinite alternate; }
+.e-swirl { transform-origin: 60px 52px; animation: spin 6s linear infinite; }
+.e-orb { animation: breathe 3s ease-in-out infinite; }
+.e-glow { transform-origin: 60px 52px; animation: pulsey 3s ease-in-out infinite alternate; }
+.m-moon { transform-origin: 86px 40px; animation: bobmoon 4s ease-in-out infinite alternate; }
+.m-hat { transform-origin: 60px 76px; animation: swing 3.5s ease-in-out infinite alternate; }
+.m-star { transform-origin: 60px 51px; animation: pulsey 1.6s ease-in-out infinite alternate; }
+.m-gem, .c-gem { animation: gemglow 2.4s ease-in-out infinite; }
+.c-rays { transform-origin: 60px 60px; animation: spin 30s linear infinite; }
+.c-halo { transform-origin: 60px 62px; animation: pulsey 2.2s ease-in-out infinite alternate; }
+.c-core { transform-origin: 60px 62px; animation: pulsel 2.2s ease-in-out infinite alternate; }
+.c-glint { transform-origin: 60px 6px; animation: glint 3s ease-in-out infinite; }
+@media (prefers-reduced-motion: reduce) { .av * { animation: none !important; } }
+.av { display: block; width: 100%; height: 100%; }
+.avatar.has-av { border: 0; background: none; width: 52px; height: 52px; }
+.medal.has-av { border: 0; background: none; box-shadow: none; flex: 0 0 76px; width: 76px; height: 76px; }
+.lbav { flex: 0 0 46px; width: 46px; height: 46px; }
+.rtile .av { width: 46px; height: 46px; margin-bottom: 4px; flex: 0 0 auto; }
+.rankup { display: flex; align-items: center; justify-content: center; gap: 14px; text-align: left; }
+.rankup .av { width: 64px; height: 64px; flex: 0 0 64px; animation: pop 0.8s cubic-bezier(0.2, 1.4, 0.4, 1); }
+/* Ranks */
+.rtitle { display: block; font-family: var(--body); font-weight: 600; font-size: 13px; letter-spacing: 0.04em; color: var(--gold); }
+.lbname { flex-direction: column; align-items: flex-start; gap: 2px; }
+.ladder { display: flex; flex-wrap: wrap; gap: 6px; }
+.ranks { display: grid; grid-template-columns: repeat(auto-fit, minmax(112px, 1fr)); gap: 8px; }
+.rtile { min-width: 0; padding: 10px 8px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; text-align: center; border: 1px solid rgba(232, 195, 106, 0.22); background: rgba(0, 0, 0, 0.4); }
+.rtile b { font-family: var(--display); font-size: 13px; letter-spacing: 0.04em; text-transform: uppercase; color: var(--gold-hi); text-wrap: balance; }
+.rtile span { font-size: 12px; color: var(--muted); }
+.rules-list { margin: 0; padding-left: 20px; display: flex; flex-direction: column; gap: 10px; font-size: 15px; line-height: 1.5; }
+.rchip { padding: 3px 10px; border: 1px solid var(--bronze-dim); font-size: 13px; color: var(--muted); }
+.rchip b { font-family: var(--display); color: var(--ink); }
+.ladder .rchip.on { border-color: #c99a3e; color: var(--gold-hi); }
+.ladder .rchip.now { background: linear-gradient(180deg, #f6d77a, var(--gold-deep)); border-color: #ffe9a6; color: #2a1604; font-weight: 700; }
+.rankup { padding: 12px 18px; border: 1px solid #ffe9a6; background: linear-gradient(180deg, rgba(232, 195, 106, 0.25), rgba(10, 6, 4, 0.9)); font-family: var(--display); font-weight: 700; font-size: 18px; color: var(--gold-hi); }
+/* Step 3: grant a charm */
+.btn, .btn2 { text-decoration: none; }
+.btn:hover { color: #2a1604; filter: brightness(1.08); }
+@keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+@keyframes burst { from { transform: scale(0.4); opacity: 0.9; } to { transform: scale(1.6); opacity: 0; } }
+@keyframes pulse { 0% { transform: scale(1); filter: brightness(1); } 50% { transform: scale(1.07); filter: brightness(1.6); } 100% { transform: scale(1); filter: brightness(1); } }
+.slow { animation: spin 24s linear infinite; }
+.fast { animation: spin 1.6s linear infinite; }
+.burst { animation: burst 1.4s ease-out infinite; }
+.pulse { animation: pulse 0.9s ease-in-out infinite; }
+.float { animation: bob 3s ease-in-out infinite alternate; }
+.ghead { display: flex; flex-direction: column; gap: 14px; margin-bottom: 28px; }
+.ghead p { margin: 0; font-size: 18px; line-height: 1.6; max-width: 660px; }
+.ggrid { display: flex; flex-wrap: wrap; gap: 28px; align-items: stretch; }
+.gform { flex: 1 1 400px; min-width: 0; padding: 30px; display: flex; flex-direction: column; gap: 22px; }
+.stage { flex: 1 1 440px; min-width: 0; padding: 30px; min-height: 540px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px; text-align: center; overflow: hidden; }
+.fgroup { display: flex; flex-direction: column; gap: 8px; }
+.fgroup .eyebrow { font-size: 13px; }
+.gform .field { width: 100%; }
+textarea.field { resize: vertical; min-height: 110px; }
+.small { font-size: 13px; }
+.actions { display: flex; flex-wrap: wrap; align-items: center; gap: 16px; }
+.draw { display: flex; flex-wrap: wrap; gap: 10px; }
+.dchip { width: 56px; height: 56px; border-radius: 50%; border: 2px solid #8a6a2f; background: radial-gradient(circle at 50% 38%, #2f1d44, #0c0610 75%); display: flex; align-items: center; justify-content: center; }
+.dchip svg { width: 38px; height: 38px; }
+.runes { position: relative; width: 260px; max-width: 100%; height: 260px; }
+.runes .ring { position: absolute; inset: 0; }
+.runes .core { position: absolute; top: 70px; left: 70px; width: 120px; height: 120px; border-radius: 50%; display: flex; align-items: center; justify-content: center; }
+.revealring { position: relative; width: 280px; max-width: 100%; height: 280px; display: flex; align-items: center; justify-content: center; }
+.revealring .b { position: absolute; width: 240px; height: 240px; border-radius: 50%; border: 4px solid #ffd86b; }
+.revealring .socket { width: 230px; height: 230px; border: 5px solid #c99a3e; box-shadow: inset 0 0 30px rgba(0, 0, 0, 0.85), 0 0 40px rgba(232, 195, 106, 0.5); }
+.revealring .socket svg { width: 160px; height: 160px; }
+.stage-title { font-family: var(--display); font-weight: 700; font-size: 30px; line-height: 1.15; }
+.stage-note { max-width: 400px; padding: 14px 18px; border: 1px solid var(--bronze); background: rgba(0, 0, 0, 0.4); font-size: 15px; line-height: 1.5; overflow-wrap: anywhere; }
+.stage-btns { display: flex; flex-wrap: wrap; justify-content: center; gap: 12px; margin-top: 4px; }
+@media (max-width: 520px) { .gform, .stage { padding: 20px; } .stage { min-height: 0; } }
+@media (prefers-reduced-motion: reduce) { .ember, .has .charm, .slow, .fast, .burst, .pulse, .float { animation: none; } .sw::after { transition: none; } }
+
+
+/* ---- charm reveal ---- */
+.charge { position: absolute; inset: 0; pointer-events: none; }
+.charge i { position: absolute; left: 50%; top: 50%; width: 7px; height: 7px; margin: -3px; border-radius: 50%; background: #fff1c1; box-shadow: 0 0 10px #ffd86b; animation: conv 1.4s ease-in infinite both; }
+@keyframes conv { 0% { transform: rotate(var(--a)) translateX(175px) scale(0.3); opacity: 0; } 25% { opacity: 1; } 100% { transform: rotate(var(--a)) translateX(16px) scale(1); opacity: 0; } }
+.rv { position: relative; width: 280px; max-width: 100%; height: 280px; display: flex; align-items: center; justify-content: center; margin-bottom: 4px; }
+.rv > * { position: absolute; }
+.rv .flash { inset: -80px; border-radius: 50%; background: radial-gradient(circle, #fffbe6 0%, color-mix(in srgb, var(--gc) 70%, #fff) 30%, transparent 68%); opacity: 0; animation: rvflash 0.9s ease-out both; }
+@keyframes rvflash { 0% { opacity: 0; transform: scale(0.3); } 18% { opacity: 1; } 100% { opacity: 0; transform: scale(1.5); } }
+.rv .rays { inset: -70px; border-radius: 50%; background: repeating-conic-gradient(from 0deg, color-mix(in srgb, var(--gc) 60%, transparent) 0 5deg, transparent 5deg 18deg); -webkit-mask: radial-gradient(circle, transparent 30%, #000 42%, transparent 72%); mask: radial-gradient(circle, transparent 30%, #000 42%, transparent 72%); animation: rvfade 1.2s ease-out 0.15s both, spin 26s linear infinite; }
+@keyframes rvfade { from { opacity: 0; } to { opacity: 0.75; } }
+.rv .shock { width: 220px; height: 220px; border-radius: 50%; border: 4px solid var(--gc); box-shadow: 0 0 22px var(--gc), inset 0 0 22px var(--gc); animation: rvshock 1.2s cubic-bezier(0.1, 0.7, 0.3, 1) both; }
+.rv .shock.s2 { border-color: #fff1c1; border-width: 2px; animation-delay: 0.18s; }
+@keyframes rvshock { 0% { transform: scale(0.25); opacity: 1; } 100% { transform: scale(2.1); opacity: 0; } }
+.rv .sparks { inset: 0; }
+.rv .sparks i { position: absolute; left: 50%; top: 50%; width: var(--z); height: var(--z); margin: calc(var(--z) / -2); border-radius: 50%; background: #fff6cf; box-shadow: 0 0 10px var(--gc), 0 0 4px #fff; animation: sparkout 1.3s cubic-bezier(0.15, 0.8, 0.3, 1) both; }
+@keyframes sparkout { 0% { transform: rotate(var(--a)) translateX(50px) scale(0.2); opacity: 0; } 12% { opacity: 1; } 100% { transform: rotate(var(--a)) translateX(var(--d)) scale(0.3); opacity: 0; } }
+.rv .emerge { position: relative; animation: emerge 1s cubic-bezier(0.2, 1.25, 0.35, 1) 0.1s both; }
+@keyframes emerge { 0% { transform: scale(0.05) rotate(-200deg); opacity: 0; filter: brightness(3) blur(6px); } 55% { opacity: 1; filter: brightness(1.8) blur(0); } 78% { transform: scale(1.14) rotate(8deg); } 100% { transform: scale(1) rotate(0deg); filter: brightness(1); } }
+.rv .socket { width: 230px; height: 230px; border: 5px solid #c99a3e; box-shadow: inset 0 0 30px rgba(0, 0, 0, 0.85), 0 0 46px color-mix(in srgb, var(--gc) 70%, transparent); }
+.rv .socket svg { width: 160px; height: 160px; }
+.rvin { opacity: 0; animation: rvin 0.7s ease-out var(--d, 0s) both; }
+@keyframes rvin { from { opacity: 0; transform: translateY(14px) scale(0.96); } to { opacity: 1; transform: none; } }
+
+.helpbtn { flex: 0 0 36px; width: 36px; height: 36px; border-radius: 50%; border: 1.5px solid var(--bronze); background: rgba(0, 0, 0, 0.45); color: var(--gold-hi); font: 700 17px var(--display); cursor: pointer; }
+.helpbtn:hover { border-color: var(--gold); background: rgba(232, 195, 106, 0.12); }
+.tour { position: fixed; inset: 0; z-index: 200; display: flex; align-items: center; justify-content: center; overflow-y: auto; overflow-x: hidden; padding: max(20px, env(safe-area-inset-top, 0px)) max(16px, env(safe-area-inset-right, 0px)) max(20px, env(safe-area-inset-bottom, 0px)) max(16px, env(safe-area-inset-left, 0px)); background: radial-gradient(ellipse at 50% 38%, #2a1a55 0%, #0b0720 55%, #04030c 100%); }
+.tour[hidden] { display: none; }
+.tour .tembers { position: absolute; inset: 0; overflow: hidden; pointer-events: none; }
+.tour .tembers .ember { bottom: -10px; animation-duration: 7s; }
+.tskip { position: absolute; top: max(14px, env(safe-area-inset-top, 0px)); right: max(16px, env(safe-area-inset-right, 0px)); z-index: 2; min-height: 40px; padding: 0 14px; background: rgba(0, 0, 0, 0.35); border: 1px solid var(--bronze-dim); color: #e8dcc0; font: 700 12px var(--display); letter-spacing: 0.1em; text-transform: uppercase; cursor: pointer; }
+.tsnd { right: auto; left: max(16px, env(safe-area-inset-left, 0px)); display: flex; align-items: center; justify-content: center; padding: 0 12px; }
+.tskip:hover { border-color: var(--gold); color: var(--gold-hi); }
+.tscene { position: relative; z-index: 1; width: 100%; max-width: 620px; display: flex; flex-direction: column; align-items: center; text-align: center; gap: 18px; margin: auto; }
+@keyframes tfade { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }
+@keyframes tzoom { from { opacity: 0; transform: scale(0.4); } to { opacity: 1; transform: none; } }
+@keyframes tring { from { opacity: 0.7; transform: translate(-50%, -50%) scale(0.2); } to { opacity: 0; transform: translate(-50%, -50%) scale(1.6); } }
+@keyframes torbit { from { transform: rotate(var(--a)) translateX(var(--r)) rotate(calc(var(--a) * -1)); } to { transform: rotate(calc(var(--a) + 360deg)) translateX(var(--r)) rotate(calc(var(--a) * -1 - 360deg)); } }
+@keyframes tglow { 0%, 100% { filter: drop-shadow(0 0 10px rgba(255, 216, 107, 0.5)); } 50% { filter: drop-shadow(0 0 26px rgba(255, 216, 107, 0.95)); } }
+@keyframes ttrack { from { letter-spacing: 0.5em; opacity: 0; } to { letter-spacing: 0.1em; opacity: 1; } }
+.tcard { position: relative; width: 100%; border: 1px solid var(--bronze); background: rgba(12, 8, 22, 0.92); box-shadow: 0 0 40px rgba(0, 0, 0, 0.7), inset 0 0 0 1px rgba(232, 195, 106, 0.12); padding: 28px 28px 24px; display: flex; flex-direction: column; align-items: center; gap: 14px; animation: tfade 0.5s ease backwards; }
+.tcard h2 { margin: 0; font-size: 30px; }
+.tcard p { margin: 0; font-size: 16px; line-height: 1.55; color: #e3d8bd; max-width: 460px; }
+.tdots { display: flex; gap: 8px; }
+.tdots i { width: 28px; height: 4px; background: var(--bronze-dim); }
+.tdots i.on { background: var(--gold-hi); box-shadow: 0 0 8px rgba(255, 216, 107, 0.7); }
+.tart { position: relative; height: 170px; width: 100%; display: flex; align-items: center; justify-content: center; }
+.tnav { display: flex; align-items: center; justify-content: center; flex-wrap: wrap; gap: 10px 14px; margin-top: 6px; }
+.tnav .btn, .tnav .btn2 { min-height: 44px; }
+@keyframes tpulse { 0%, 100% { box-shadow: 0 0 14px rgba(255, 216, 107, 0.3), inset 0 0 18px rgba(0, 0, 0, 0.85); } 50% { box-shadow: 0 0 40px rgba(255, 216, 107, 0.8), inset 0 0 18px rgba(0, 0, 0, 0.85); } }
+@keyframes tspark { 0% { opacity: 0; transform: translate(0, 0) scale(0.4); } 30% { opacity: 1; } 100% { opacity: 0; transform: translate(var(--x), var(--y)) scale(1); } }
+.art-earn .sock { width: 110px; height: 110px; animation: tpulse 2.4s ease-in-out infinite; }
+.art-earn .sock svg { width: 74px; height: 74px; }
+.art-earn .sp { position: absolute; left: 50%; top: 50%; width: 6px; height: 6px; border-radius: 50%; background: #ffe9a6; box-shadow: 0 0 8px 2px rgba(255, 216, 107, 0.8); animation: tspark 2.4s ease-out var(--d) infinite; }
+.art-earn .chip2 { position: absolute; bottom: -4px; left: 50%; transform: translateX(-50%); white-space: nowrap; padding: 6px 12px; border: 1px solid rgba(232, 195, 106, 0.4); background: rgba(0, 0, 0, 0.75); font-size: 13px; color: #f4ead0; animation: tfade 0.8s ease 0.8s backwards; }
+@keyframes tlit { from { filter: grayscale(1) brightness(0.45); border-color: var(--bronze-dim); } to { filter: none; border-color: #c99a3e; } }
+.art-collect { align-content: center; display: grid; grid-template-columns: repeat(4, 60px); gap: 12px; justify-content: center; }
+.art-collect .sock { width: 60px; height: 60px; border-width: 2px; animation: tlit 0.5s ease calc(var(--i) * 0.28s + 0.3s) backwards; }
+.art-collect .sock svg { width: 38px; height: 38px; }
+@keyframes tswapL { 0%, 25% { transform: none; } 50%, 75% { transform: translateX(var(--sd)); } 100% { transform: none; } }
+@keyframes tswapR { 0%, 25% { transform: none; } 50%, 75% { transform: translateX(calc(var(--sd) * -1)); } 100% { transform: none; } }
+.art-trade { --sd: 174px; gap: 90px; }
+.art-trade .sock { width: 84px; height: 84px; }
+.art-trade .sock svg { width: 56px; height: 56px; }
+.art-trade .l { animation: tswapL 4s ease-in-out infinite; }
+.art-trade .r { animation: tswapR 4s ease-in-out infinite; }
+.art-trade .arr { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); font-size: 26px; color: var(--gold-hi); }
+@keyframes tup { from { opacity: 0; transform: translateY(30px) scale(0.7); } to { opacity: 1; transform: none; } }
+.art-rank { gap: 8px; align-items: flex-end; flex-wrap: wrap; }
+.art-rank .rk { width: 56px; animation: tup 0.6s cubic-bezier(.2, 1.2, .4, 1) calc(var(--i) * 0.3s + 0.2s) backwards; }
+.art-rank .rk svg { width: 100%; height: auto; display: block; }
+.art-rank .rk:nth-child(1) { margin-bottom: 0; } .art-rank .rk:nth-child(2) { margin-bottom: 8px; } .art-rank .rk:nth-child(3) { margin-bottom: 16px; } .art-rank .rk:nth-child(4) { margin-bottom: 24px; } .art-rank .rk:nth-child(5) { margin-bottom: 32px; }
+.art-rank .rk:nth-child(6) { margin-bottom: 40px; animation: tup 0.6s cubic-bezier(.2, 1.2, .4, 1) 2s backwards, tglow 2.6s ease-in-out 2.6s infinite; }
+@media (max-width: 520px) { .tcard { padding: 22px 18px 20px; } .tcard h2 { font-size: 25px; } .art-trade { --sd: 134px; gap: 50px; } .art-rank .rk { width: 44px; } .t-stage { --r: 108px; } }
+.scr { --h: min(78vh, 640px); position: relative; width: min(580px, 100%); height: var(--h); margin: auto; }
+.scr::before { content: ""; position: absolute; inset: -40px; background: radial-gradient(closest-side, rgba(255, 216, 107, 0.4), transparent); animation: taura 4s ease-in-out infinite; pointer-events: none; }
+@keyframes taura { 0%, 100% { opacity: 0.55; transform: scale(0.97); } 50% { opacity: 1; transform: scale(1.03); } }
+@keyframes tunfurl { from { clip-path: inset(50% 0 50% 0); } to { clip-path: inset(0 0 0 0); } }
+@keyframes trodt { from { top: calc(50% - 15px); } to { top: -6px; } }
+@keyframes trodb { from { bottom: calc(50% - 15px); } to { bottom: -6px; } }
+.scr .rod { position: absolute; left: -14px; right: -14px; height: 30px; z-index: 3; border-radius: 15px; background: linear-gradient(180deg, #8b5a2b, #c68e4a 40%, #5e3a18); box-shadow: 0 6px 14px rgba(0, 0, 0, 0.6), inset 0 -3px 5px rgba(0, 0, 0, 0.4); }
+.scr .rod::before, .scr .rod::after { content: ""; position: absolute; top: -3px; width: 16px; height: 36px; border-radius: 8px; background: radial-gradient(circle at 40% 35%, #ffe9a6, #b8862e 70%); }
+.scr .rod::before { left: -6px; } .scr .rod::after { right: -6px; }
+.scr .rod.t { top: -6px; animation: trodt 1.4s cubic-bezier(.3, .7, .2, 1) 0.1s backwards; }
+.scr .rod.b { bottom: -6px; animation: trodb 1.4s cubic-bezier(.3, .7, .2, 1) 0.1s backwards; }
+.scr .paper { position: absolute; inset: 0; animation: tunfurl 1.4s cubic-bezier(.3, .7, .2, 1) 0.1s backwards; background: radial-gradient(ellipse at 50% 0%, rgba(255, 245, 210, 0.9), transparent 60%), linear-gradient(180deg, #f2dfb0, #e6cb8d 50%, #ddbd7a); box-shadow: inset 0 0 40px rgba(110, 70, 20, 0.45), inset 0 0 0 2px rgba(120, 80, 30, 0.35); }
+.scr .scroller { position: absolute; inset: 14px 0; overflow-y: auto; padding: 22px 30px 28px; color: #3a2410; scrollbar-width: thin; scrollbar-color: #9a6b2c transparent; -webkit-mask-image: linear-gradient(180deg, transparent 0, #000 22px, #000 calc(100% - 22px), transparent 100%); mask-image: linear-gradient(180deg, transparent 0, #000 22px, #000 calc(100% - 22px), transparent 100%); outline: none; }
+.scr .tsec { display: flex; flex-direction: column; align-items: center; text-align: center; gap: 10px; padding: 10px 0 26px; opacity: 0; transform: translateY(24px); transition: opacity 0.8s ease, transform 0.8s ease; }
+.scr .tsec.in { opacity: 1; transform: none; }
+.scr .tsec:not(.in) * { animation-play-state: paused !important; }
+.scr .sc-head { text-align: center; padding: 6px 0 14px; animation: tfade 1s ease 1.2s backwards; }
+.scr .sc-head .eyebrow { color: #7a4a1c; }
+.scr h1 { margin: 4px 0 0; font: 700 32px var(--display); color: #5a2a0e; letter-spacing: 0.06em; }
+.scr h2 { margin: 0; font: 700 24px var(--display); color: #5a2a0e; }
+.scr p { margin: 0; font-size: 16px; line-height: 1.6; color: #3a2410; max-width: 440px; }
+.scr .num { width: 38px; height: 38px; border-radius: 50%; border: 1.5px solid #9a6b2c; display: flex; align-items: center; justify-content: center; font: 700 15px var(--display); color: #7a3a14; background: rgba(255, 240, 200, 0.5); box-shadow: 0 0 12px rgba(255, 216, 107, 0.7); }
+.scr .orn { width: 120px; height: 10px; opacity: 0.7; }
+.scr .rm { color: #7a2a10; text-decoration: none; font: 700 12px var(--display); letter-spacing: 0.1em; text-transform: uppercase; border-bottom: 1px solid rgba(122, 42, 16, 0.4); }
+.scr .rm:hover { color: #b3401a; }
+.scr .tart { height: 170px; }
+.scr .art-earn .sock { width: 96px; height: 96px; }
+.scr .art-earn .sock svg { width: 64px; height: 64px; }
+.scr .art-earn .chip2 { bottom: 0; background: rgba(30, 18, 8, 0.85); }
+.scr .art-collect { grid-template-columns: repeat(4, 54px); gap: 10px; }
+.scr .art-collect .sock { width: 54px; height: 54px; }
+.scr .art-collect .sock svg { width: 34px; height: 34px; }
+.scr .tend { display: flex; justify-content: center; padding: 8px 0 6px; }
+.scr .hint { position: absolute; left: 0; right: 0; bottom: 36px; z-index: 4; pointer-events: none; color: #7a3a14; font: 700 11px var(--display); letter-spacing: 0.14em; text-transform: uppercase; text-align: center; animation: tfade 0.8s ease 2s backwards, bob 1.2s ease-in-out 2.8s infinite alternate; transition: opacity 0.4s; }
+.scr .hint.gone { opacity: 0; }
+@media (max-width: 520px) { .scr { width: calc(100% - 28px); } .scr .scroller { padding: 18px 20px 24px; } .scr h1 { font-size: 26px; } .scr h2 { font-size: 21px; } }
+@media (prefers-reduced-motion: reduce) { .scr .tsec { opacity: 1; transform: none; } }
+.tour.t-intro { overflow: hidden; background: #04030c; --mx: 0; --my: 0; }
+@media (max-height: 620px) { .tour.t-intro { overflow-y: auto; } }
+.t-intro .tpx { position: absolute; inset: -6%; transform: translate(calc(var(--mx, 0) * -10px), calc(var(--my, 0) * -7px)); transition: transform 0.5s ease-out; pointer-events: none; }
+.t-intro .tforest { transform: translate(calc(var(--mx, 0) * -24px), 0); transition: transform 0.5s ease-out; }
+.t-intro .tbright { position: absolute; inset: 0; background: radial-gradient(ellipse at 50% 40%, #3b2486 0%, #1a0f40 40%, transparent 75%); animation: tfadein 1.8s ease 4s backwards; pointer-events: none; }
+@keyframes tfadein { from { opacity: 0; } to { opacity: 1; } }
+@keyframes tdrift { from { background-position: 0 0; } to { background-position: -400px -300px; } }
+.t-intro .st1, .t-intro .st2 { position: absolute; inset: 0; animation: tfadein 2s ease 0.3s backwards, tdrift 70s linear infinite; }
+.t-intro .st1 { background-image: radial-gradient(1px 1px at 20px 30px, #fff, transparent), radial-gradient(1px 1px at 120px 90px, #cfd8ff, transparent), radial-gradient(1.5px 1.5px at 260px 40px, #ffe9a8, transparent), radial-gradient(1px 1px at 330px 200px, #fff, transparent), radial-gradient(1px 1px at 70px 240px, #fff, transparent), radial-gradient(1px 1px at 200px 170px, #fff, transparent); background-size: 400px 300px; opacity: 0.8; }
+.t-intro .st2 { background-image: radial-gradient(2px 2px at 90px 60px, #fff, transparent), radial-gradient(2px 2px at 310px 120px, #ffe9a8, transparent), radial-gradient(2px 2px at 190px 250px, #b9c7ff, transparent); background-size: 400px 300px; animation-duration: 2s, 40s; }
+.t-intro .tforest { position: absolute; left: -2%; right: -2%; bottom: 0; width: 104%; height: 24vh; animation: tfadein 3s ease 0.5s backwards; }
+.t-stage { --r: 128px; --far: 760px; position: relative; width: 300px; height: 300px; max-width: 100%; margin-bottom: 22px; transition: transform 0.5s ease-out; transform: translate(calc(var(--mx, 0) * 10px), calc(var(--my, 0) * 8px)); }
+.t-stage > * { pointer-events: none; }
+.t-stage .rays { position: absolute; left: 50%; top: 50%; width: 1500px; height: 1500px; margin: -750px 0 0 -750px; background: repeating-conic-gradient(rgba(255, 216, 107, 0.15) 0 2.5deg, transparent 2.5deg 12deg); -webkit-mask-image: radial-gradient(circle, #000 0, transparent 58%); mask-image: radial-gradient(circle, #000 0, transparent 58%); animation: tfadein 1.8s ease 4s backwards, tspin 120s linear 4s infinite; }
+@keyframes tspin { to { transform: rotate(360deg); } }
+.t-stage .seed { position: absolute; left: 50%; top: 50%; width: 8px; height: 8px; margin: -4px 0 0 -4px; border-radius: 50%; background: #fff4c8; box-shadow: 0 0 18px 6px rgba(255, 216, 107, 0.8); opacity: 0; animation: tseed 4.1s ease-in-out backwards; }
+@keyframes tseed { 0% { opacity: 0; transform: scale(0.3); } 10% { opacity: 1; transform: scale(1); } 30% { opacity: 1; transform: scale(1.5); } 45% { opacity: 1; transform: scale(1); } 70% { opacity: 1; transform: scale(1.8); } 95% { opacity: 1; transform: scale(3.5); } 100% { opacity: 0; transform: scale(5); } }
+.t-stage .hoop { position: absolute; inset: 0; border-radius: 50%; border: 2px solid var(--gold); opacity: 0.4; box-shadow: 0 0 24px rgba(255, 216, 107, 0.3); animation: thoop 5.2s linear backwards; }
+@keyframes thoop { 0%, 19% { opacity: 0; box-shadow: none; transform: scale(1); } 76% { opacity: 0.3; transform: scale(1); } 80% { opacity: 1; box-shadow: 0 0 70px 12px rgba(255, 216, 107, 0.9); transform: scale(1.05); } 100% { opacity: 0.4; box-shadow: 0 0 24px rgba(255, 216, 107, 0.3); transform: scale(1); } }
+.t-stage .arm { position: absolute; left: 50%; top: 50%; width: 0; height: 0; transform: rotate(var(--a)); animation: tspinA 44s linear 5.4s infinite; }
+@keyframes tspinA { from { transform: rotate(var(--a)); } to { transform: rotate(calc(var(--a) + 360deg)); } }
+.t-stage .orb { position: absolute; left: -24px; top: -24px; width: 48px; height: 48px; border-radius: 50%; border: 2px solid #c99a3e; background: radial-gradient(circle at 50% 38%, #2f1d44, #0c0610 75%); box-shadow: 0 0 16px color-mix(in srgb, var(--gc) 60%, transparent); transform: translateX(var(--r)); animation: tcomet 0.95s cubic-bezier(.12, .7, .2, 1) var(--d) backwards; }
+@keyframes tcomet { 0% { transform: translateX(var(--far)); opacity: 0; } 10% { opacity: 1; } 100% { transform: translateX(var(--r)); opacity: 1; } }
+.t-stage .orb .ic { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; transform: rotate(calc(var(--a) * -1)); animation: tspinI 44s linear 5.4s infinite; }
+@keyframes tspinI { from { transform: rotate(calc(var(--a) * -1)); } to { transform: rotate(calc(var(--a) * -1 - 360deg)); } }
+.t-stage .orb svg { width: 30px; height: 30px; }
+.t-stage .orb .tr { position: absolute; left: 24px; top: 22px; height: 4px; width: 200px; transform-origin: 0 50%; border-radius: 2px; background: linear-gradient(90deg, var(--gc), transparent); opacity: 0; animation: ttrail 0.95s ease-out var(--d) backwards; }
+@keyframes ttrail { 0% { opacity: 0; transform: scaleX(1); } 15% { opacity: 0.95; } 100% { opacity: 0; transform: scaleX(0); } }
+.t-stage .orb::after { content: ""; position: absolute; inset: -4px; border-radius: 50%; border: 2px solid var(--gc); opacity: 0; animation: tland 0.7s ease-out calc(var(--d) + 0.85s) backwards; }
+@keyframes tland { 0% { opacity: 0; transform: scale(0.8); } 12% { opacity: 1; } 100% { opacity: 0; transform: scale(2.6); } }
+.t-stage .shock { position: absolute; left: 50%; top: 50%; width: 300px; height: 300px; border-radius: 50%; border: 2px solid #ffe9a6; opacity: 0; transform: translate(-50%, -50%) scale(0.2); animation: tshock 1.7s ease-out var(--d) backwards; }
+@keyframes tshock { 0% { opacity: 0; transform: translate(-50%, -50%) scale(0.2); } 2% { opacity: 0.9; } 100% { opacity: 0; transform: translate(-50%, -50%) scale(3.2); } }
+.t-stage .tflash { position: absolute; left: 50%; top: 50%; width: 1700px; height: 1700px; margin: -850px 0 0 -850px; background: radial-gradient(circle, #fff7d0 0%, rgba(255, 216, 107, 0.5) 20%, transparent 55%); opacity: 0; animation: tflash 1.5s ease-out 4s backwards; }
+@keyframes tflash { 0% { opacity: 0; } 8% { opacity: 0.95; } 100% { opacity: 0; } }
+.t-stage .crest { position: absolute; left: 50%; top: 50%; margin: -58px 0 0 -53px; width: 106px; height: 116px; animation: tforge 1.1s cubic-bezier(.2, 1.3, .4, 1) 3.95s backwards, tglow 3s ease-in-out 5.2s infinite; }
+@keyframes tforge { 0% { opacity: 0; transform: scale(0.3); filter: blur(10px) brightness(3); } 100% { opacity: 1; transform: none; filter: none; } }
+.t-stage .glint { transform: translateX(-30px); animation: tglintc 1s ease-in-out 4.9s backwards; }
+@keyframes tglintc { from { transform: translateX(-30px); } to { transform: translateX(70px); } }
+.tscene .eyebrow { animation: tfade 1s ease 5.2s backwards; }
+.t-title { position: relative; overflow: hidden; margin: 0; padding: 4px 12px; font-size: clamp(32px, 8vw, 58px); line-height: 1.15; letter-spacing: 0.1em; text-transform: uppercase; }
+.t-title .tl { display: inline-block; animation: tletter 0.8s ease calc(4.5s + var(--i) * 0.06s) backwards; }
+.t-title .tl.sp { width: 0.35em; }
+@keyframes tletter { 0% { opacity: 0; transform: translateY(14px) scale(1.25); filter: blur(8px); } 100% { opacity: 1; transform: none; filter: blur(0); } }
+.t-title::after { content: ""; position: absolute; top: 0; bottom: 0; left: -40%; width: 30%; background: linear-gradient(100deg, transparent, rgba(255, 255, 255, 0.9), transparent); mix-blend-mode: overlay; pointer-events: none; animation: tglintx 1.3s ease-in-out 5.9s backwards; }
+@keyframes tglintx { from { left: -40%; } to { left: 120%; } }
+.t-sub { margin: 0; font-size: 18px; color: #e3d8bd; max-width: 440px; animation: tfade 0.9s ease 5.8s backwards; }
+.t-go { animation: tfade 0.9s ease 6.5s backwards; }
+@media (max-width: 520px) { .t-stage { --r: 108px; --far: 520px; } }
+@media (prefers-reduced-motion: reduce) { .tour * { animation: none !important; } }
+@media (prefers-reduced-motion: reduce) { .rv .flash, .rv .rays, .rv .shock, .rv .sparks, .charge { display: none; } .rv .emerge, .rvin { animation: none; opacity: 1; } }
+
+.btn.danger { background: linear-gradient(180deg, #e0624f, #a62a1c); border-color: #ffb0a3; color: #fff; box-shadow: 0 0 18px rgba(224, 98, 79, 0.3); }
+.btn.danger:hover { filter: brightness(1.1); color: #fff; }
+.btn.danger:disabled { opacity: 0.5; cursor: not-allowed; }
+.danger { border-color: #7a3a2c; }
+
+.reqs { display: flex; flex-direction: column; gap: 10px; padding: 16px; border: 1px solid #c99a3e; background: rgba(232, 195, 106, 0.06); margin-bottom: 8px; }
+.rrow.req { grid-template-columns: minmax(0, 1fr) auto; }
+.reqbtns { display: flex; flex-wrap: wrap; gap: 8px; justify-content: flex-end; }
+#gate-body { display: flex; flex-direction: column; gap: 16px; }
+.reqbtns .btn, .reqbtns .btn2 { min-height: 38px; padding: 0 16px; font-size: 13px; }
+#gate-body .warn { margin-top: 4px; }
+#gate-body .inline-form .btn2 { white-space: nowrap; }
+
+/* ---- Overview leaderboard ---- */
+.lbname .nm { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.lbname .nm .t { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.lbname .nm .youtag { flex: 0 0 auto; }
+.lbname { overflow-wrap: normal; }
+.lbgap { text-align: center; padding: 2px 0; font: 700 12px var(--display); letter-spacing: 0.2em; text-transform: uppercase; color: var(--muted); }
+@media (max-width: 560px) {
+  .lbrow { grid-template-columns: 38px 40px minmax(0, 1fr) 64px; gap: 10px 10px; padding: 12px; }
+  .lbrow .rank { width: 38px; height: 38px; flex-basis: 38px; font-size: 17px; }
+  .lbrow .lbav { width: 40px; height: 40px; }
+  .lbrow .lbscore { order: 1; }
+  .lbrow .gems { order: 2; grid-column: 1 / -1; justify-content: center; }
+}
+
+/* ---- Trading Post ---- */
+.tbar { padding: 24px 30px; display: flex; flex-direction: column; gap: 20px; }
+.tbar .msg:empty { display: none; }
+.ttabs { display: flex; flex-wrap: wrap; gap: 6px; border-bottom: 1px solid var(--bronze-dim); }
+.ttab { display: inline-flex; align-items: center; gap: 8px; min-height: 44px; padding: 0 16px; background: none; border: 0; border-bottom: 3px solid transparent; color: var(--ink); font: 700 14px var(--display); letter-spacing: 0.08em; text-transform: uppercase; cursor: pointer; margin-bottom: -1px; }
+.ttab:hover { color: var(--gold-hi); }
+.ttab[aria-selected="true"] { color: var(--gold-hi); border-bottom-color: var(--gold); }
+.ttab .n { min-width: 22px; padding: 1px 7px; border-radius: 11px; background: rgba(232, 195, 106, 0.16); font: 700 12px var(--body); letter-spacing: 0; text-align: center; }
+.tfilter { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.fchip { width: 44px; height: 44px; padding: 6px; border-radius: 50%; background: rgba(0, 0, 0, 0.4); border: 2px solid #4a3a22; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; }
+.fchip svg { width: 28px; height: 28px; }
+.fchip:hover { border-color: var(--bronze); }
+.fchip[aria-pressed="true"] { border-color: var(--gold); background: rgba(232, 195, 106, 0.18); box-shadow: 0 0 12px rgba(232, 195, 106, 0.4); }
+@media (max-width: 520px) { .tbar { padding: 20px; } }
+.dot { display: inline-flex; align-items: center; justify-content: center; min-width: 20px; height: 20px; margin-left: 8px; padding: 0 6px; border-radius: 10px; background: #c0392b; border: 1px solid #ff9a8a; color: #fff; font: 700 12px var(--body); letter-spacing: 0; }
+.tgrid { align-items: flex-start; }
+.mgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 16px; }
+.tag { display: inline-block; margin-left: 6px; padding: 1px 8px; border: 1px solid #c99a3e; color: var(--gold-hi); font: 700 11px var(--display); letter-spacing: 0.08em; text-transform: uppercase; vertical-align: middle; }
+.tform { flex: 3 1 520px; min-width: 0; padding: 30px; display: flex; flex-direction: column; gap: 22px; }
+.tside { flex: 2 1 380px; min-width: 0; display: flex; flex-direction: column; gap: 28px; }
+.tside > .panel { padding: 26px; display: flex; flex-direction: column; gap: 16px; }
+.tpanel { margin-top: 28px; padding: 30px; display: flex; flex-direction: column; gap: 20px; }
+.tform .field { width: 100%; max-width: 360px; }
+.tform h2, .tside h2, .tpanel h2 { margin: 0; }
+.thead { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.swap { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 22px; padding: 24px; border: 1px solid var(--bronze); background: rgba(0, 0, 0, 0.4); }
+.swap .side { display: flex; flex-direction: column; align-items: center; gap: 8px; text-align: center; min-width: 140px; }
+.sock { width: 132px; height: 132px; border-radius: 50%; box-sizing: border-box; border: 3px solid #c99a3e; background: radial-gradient(circle at 50% 38%, #2f1d44, #0c0610 75%); box-shadow: inset 0 0 18px rgba(0, 0, 0, 0.85); display: flex; align-items: center; justify-content: center; flex: 0 0 auto; }
+.sock svg { width: 88px; height: 88px; }
+.sock.empty { border: 3px dashed var(--bronze-dim); }
+.sock.empty span { font-family: var(--display); font-size: 40px; color: var(--bronze-dim); }
+.sock.sm { width: 72px; height: 72px; border-width: 2px; }
+.sock.sm svg { width: 46px; height: 46px; }
+.sock.dim svg { opacity: 0.35; filter: grayscale(1); }
+.sock.dim { border-color: var(--bronze-dim); }
+.pickrow { display: flex; flex-wrap: wrap; gap: 10px; }
+.pk { display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 10px 12px; min-width: 84px; background: rgba(0, 0, 0, 0.4); border: 2px solid #4a3a22; color: var(--ink); cursor: pointer; font: 700 13px var(--body); }
+.pk svg { width: 50px; height: 50px; }
+.pk:hover { border-color: var(--bronze); }
+.pk[aria-pressed="true"] { background: rgba(232, 195, 106, 0.16); border-color: var(--gold); }
+.pk:disabled { opacity: 0.4; cursor: not-allowed; }
+.pk small { font-weight: 600; color: var(--teal); font-size: 12px; }
+.offer { display: flex; flex-direction: column; gap: 12px; padding: 16px; border: 1px solid var(--bronze); background: rgba(0, 0, 0, 0.4); }
+.offer.in { border-color: #c99a3e; }
+.offer .pair { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
+.offer .pair .for { font-size: 14px; font-weight: 700; color: var(--muted); }
+.offer .btns { display: flex; flex-wrap: wrap; gap: 10px; }
+.offer .btn, .offer .btn2 { min-height: 40px; padding: 0 18px; font-size: 13px; }
+.offer button:disabled { opacity: 0.45; cursor: not-allowed; }
+.warn { font-size: 13px; line-height: 1.4; color: #ffb27a; }
+.tnote { padding: 12px 16px; border: 1px solid var(--bronze); background: rgba(0, 0, 0, 0.4); font-size: 14px; line-height: 1.5; display: flex; align-items: center; gap: 12px; }
+.tnote.ok { border-color: #c99a3e; color: var(--gold-hi); font-weight: 700; }
+.tnote .av { width: 44px; height: 44px; flex: 0 0 auto; }
+.wants { display: grid; grid-template-columns: repeat(auto-fit, minmax(270px, 1fr)); gap: 18px; }
+.want { min-width: 0; padding: 20px; border: 1px dashed rgba(232, 195, 106, 0.4); background: rgba(10, 6, 4, 0.7); display: flex; flex-direction: column; gap: 14px; }
+.want .wh { display: flex; align-items: center; gap: 14px; }
+.holder { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 8px 12px; border: 1px solid rgba(232, 195, 106, 0.25); background: rgba(255, 255, 255, 0.04); font-weight: 700; }
+.holder span { font-weight: 600; color: var(--teal); }
+.linkbtn { background: none; border: 0; padding: 0 4px; min-height: 36px; color: var(--gold-hi); font: 700 13px var(--display); letter-spacing: 0.08em; text-transform: uppercase; cursor: pointer; }
+.linkbtn:hover { color: #fff; }
+.linkbtn:disabled { opacity: 0.45; cursor: not-allowed; }
+.swaprow { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; padding: 10px 14px; border: 1px solid rgba(232, 195, 106, 0.18); background: rgba(0, 0, 0, 0.35); font-size: 14px; line-height: 1.4; }
+.swaprow svg { width: 30px; height: 30px; flex: 0 0 auto; }
+.swaprow time { margin-left: auto; color: var(--muted); font-size: 13px; }
+@media (max-width: 520px) { .tform, .tpanel, .tside > .panel { padding: 20px; } .swap { padding: 16px; gap: 14px; } }
+</style>
+
+<svg id="sprites" width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <symbol id="c-heart" viewBox="0 0 100 100">
+      <circle cx="50" cy="10" r="5" fill="none" stroke="#f5c451" stroke-width="3"/>
+      <line x1="50" y1="15" x2="50" y2="38" stroke="#f5c451" stroke-width="3"/>
+      <path d="M50 88 C18 66 12 42 27 32 C37 26 46 31 50 39 C54 31 63 26 73 32 C88 42 82 66 50 88Z" fill="#ff5d8f" stroke="#ffd166" stroke-width="3" stroke-linejoin="round"/>
+      <ellipse cx="34" cy="42" rx="6" ry="4" fill="#ffffff" opacity="0.5" transform="rotate(-30 34 42)"/>
+    </symbol>
+    <symbol id="c-star" viewBox="0 0 100 100">
+      <circle cx="50" cy="10" r="5" fill="none" stroke="#f5c451" stroke-width="3"/>
+      <line x1="50" y1="15" x2="50" y2="26" stroke="#f5c451" stroke-width="3"/>
+      <polygon points="50,22 58.2,44.7 82.3,45.5 63.3,60.3 70,83.5 50,70 30,83.5 36.7,60.3 17.7,45.5 41.8,44.7" fill="#ffd84d" stroke="#f5a623" stroke-width="3" stroke-linejoin="round"/>
+      <polygon points="50,32 55,46 50,50 45,46" fill="#ffffff" opacity="0.45"/>
+    </symbol>
+    <symbol id="c-horseshoe" viewBox="0 0 100 100">
+      <circle cx="50" cy="10" r="5" fill="none" stroke="#f5c451" stroke-width="3"/>
+      <line x1="50" y1="15" x2="50" y2="28" stroke="#f5c451" stroke-width="3"/>
+      <path d="M28 88 L28 52 A22 22 0 0 1 72 52 L72 88" fill="none" stroke="#cfd8e6" stroke-width="13" stroke-linecap="round"/>
+      <path d="M28 88 L28 52 A22 22 0 0 1 72 52 L72 88" fill="none" stroke="#ffffff" stroke-width="3" stroke-linecap="round" opacity="0.5" transform="translate(-2 -1)"/>
+      <circle cx="28" cy="80" r="2.4" fill="#6b7a99"/><circle cx="28" cy="66" r="2.4" fill="#6b7a99"/>
+      <circle cx="34.4" cy="36.4" r="2.4" fill="#6b7a99"/><circle cx="50" cy="30" r="2.4" fill="#6b7a99"/><circle cx="65.6" cy="36.4" r="2.4" fill="#6b7a99"/>
+      <circle cx="72" cy="66" r="2.4" fill="#6b7a99"/><circle cx="72" cy="80" r="2.4" fill="#6b7a99"/>
+    </symbol>
+    <symbol id="c-clover" viewBox="0 0 100 100">
+      <circle cx="50" cy="10" r="5" fill="none" stroke="#f5c451" stroke-width="3"/>
+      <line x1="50" y1="15" x2="50" y2="26" stroke="#f5c451" stroke-width="3"/>
+      <path d="M50 58 Q50 78 62 90" fill="none" stroke="#2fb866" stroke-width="5" stroke-linecap="round"/>
+      <circle cx="39" cy="37" r="15" fill="#3ddc84" stroke="#1f9e57" stroke-width="2.5"/>
+      <circle cx="61" cy="37" r="15" fill="#3ddc84" stroke="#1f9e57" stroke-width="2.5"/>
+      <circle cx="39" cy="59" r="15" fill="#3ddc84" stroke="#1f9e57" stroke-width="2.5"/>
+      <circle cx="61" cy="59" r="15" fill="#3ddc84" stroke="#1f9e57" stroke-width="2.5"/>
+      <circle cx="50" cy="48" r="5" fill="#2fb866"/>
+      <ellipse cx="34" cy="32" rx="5" ry="3" fill="#ffffff" opacity="0.4" transform="rotate(-30 34 32)"/>
+    </symbol>
+    <symbol id="c-moon" viewBox="0 0 100 100">
+      <circle cx="50" cy="10" r="5" fill="none" stroke="#f5c451" stroke-width="3"/>
+      <line x1="50" y1="15" x2="50" y2="24" stroke="#f5c451" stroke-width="3"/>
+      <path d="M56.29 22.59 A34 34 0 1 0 80.51 71.01 A28 28 0 1 1 56.29 22.59 Z" fill="#6bb6ff" stroke="#bfe0ff" stroke-width="2.5" stroke-linejoin="round"/>
+      <polygon points="76,34 78,40 84,40 79,44 81,50 76,46 71,50 73,44 68,40 74,40" fill="#fff3b0"/>
+      <circle cx="64" cy="70" r="2" fill="#fff3b0"/>
+    </symbol>
+    <symbol id="c-unicorn" viewBox="0 0 100 100">
+      <circle cx="58" cy="8" r="5" fill="none" stroke="#f5c451" stroke-width="3"/>
+      <line x1="58" y1="13" x2="58" y2="20" stroke="#f5c451" stroke-width="3"/>
+      <path d="M38 46 C26 40 20 52 28 58" fill="none" stroke="#ff7ac8" stroke-width="7" stroke-linecap="round"/>
+      <path d="M32 60 C20 60 20 72 30 74" fill="none" stroke="#5eead4" stroke-width="7" stroke-linecap="round"/>
+      <path d="M36 74 C28 78 30 88 40 84" fill="none" stroke="#fcd34d" stroke-width="7" stroke-linecap="round"/>
+      <path d="M34 80 C22 72 24 52 40 46 C52 42 68 44 76 56 C82 66 76 80 62 82 C54 84 42 84 34 80Z" fill="#f3e8ff" stroke="#c4a1ff" stroke-width="3" stroke-linejoin="round"/>
+      <polygon points="52,46 62,46 58,20" fill="#ffd166" stroke="#f5a623" stroke-width="2" stroke-linejoin="round"/>
+      <polygon points="44,48 40,34 54,44" fill="#e9d5ff" stroke="#c4a1ff" stroke-width="2" stroke-linejoin="round"/>
+      <circle cx="62" cy="62" r="3.2" fill="#2a1a5e"/>
+      <circle cx="72" cy="72" r="2.2" fill="#ff7ac8"/>
+    </symbol>
+    <symbol id="c-rainbow" viewBox="0 0 100 100">
+      <circle cx="50" cy="10" r="5" fill="none" stroke="#f5c451" stroke-width="3"/>
+      <line x1="50" y1="15" x2="50" y2="28" stroke="#f5c451" stroke-width="3"/>
+      <g transform="translate(0 -12)">
+        <path d="M14 80 A36 36 0 0 1 86 80" fill="none" stroke="#ff5d6c" stroke-width="6"/>
+        <path d="M20 80 A30 30 0 0 1 80 80" fill="none" stroke="#ffa94d" stroke-width="6"/>
+        <path d="M26 80 A24 24 0 0 1 74 80" fill="none" stroke="#ffe066" stroke-width="6"/>
+        <path d="M32 80 A18 18 0 0 1 68 80" fill="none" stroke="#51d88a" stroke-width="6"/>
+        <path d="M38 80 A12 12 0 0 1 62 80" fill="none" stroke="#5aa9ff" stroke-width="6"/>
+        <ellipse cx="17" cy="82" rx="13" ry="8" fill="#ffffff"/>
+        <ellipse cx="83" cy="82" rx="13" ry="8" fill="#ffffff"/>
+        <ellipse cx="28" cy="84" rx="9" ry="6" fill="#ffffff"/>
+        <ellipse cx="72" cy="84" rx="9" ry="6" fill="#ffffff"/>
+      </g>
+    </symbol>
+    <symbol id="c-balloon" viewBox="0 0 100 100">
+      <circle cx="50" cy="9" r="5" fill="none" stroke="#f5c451" stroke-width="3"/>
+      <line x1="50" y1="14" x2="50" y2="18" stroke="#f5c451" stroke-width="3"/>
+      <path d="M50 80 C44 86 56 90 50 98" fill="none" stroke="#e5e7eb" stroke-width="2"/>
+      <ellipse cx="50" cy="46" rx="26" ry="30" fill="#ff4d4d" stroke="#ff9a9a" stroke-width="2.5"/>
+      <polygon points="45,82 55,82 50,74" fill="#d93a3a"/>
+      <ellipse cx="38" cy="34" rx="6" ry="10" fill="#ffffff" opacity="0.45" transform="rotate(20 38 34)"/>
+    </symbol>
+  </defs>
+</svg>
+
+<div class="page">
+  <div class="sky" id="sky" aria-hidden="true">
+    <div class="glow-a"></div>
+    <div class="glow-b"></div>
+    <div class="stars"></div>
+    <svg class="trees">
+      <defs>
+        <pattern id="pines" width="150" height="260" patternUnits="userSpaceOnUse">
+          <polygon points="40,40 62,100 50,100 70,160 56,160 80,230 0,230 24,160 10,160 30,100 18,100" fill="#120a26"/>
+          <polygon points="115,90 138,140 126,140 146,190 132,190 152,250 78,250 98,190 84,190 104,140 92,140" fill="#0f0820"/>
+        </pattern>
+      </defs>
+      <rect x="0" y="0" width="100%" height="100%" fill="url(#pines)"/>
+    </svg>
+  </div>
+
+  <header class="bar">
+    <div class="gutter">
+      <a class="brand" href="#home" aria-label="Charm Master overview">
+        <svg width="44" height="48" viewBox="0 0 44 48" aria-hidden="true">
+          <path d="M22 2 L40 9 V24 C40 35 32 42 22 46 C12 42 4 35 4 24 V9 Z" fill="#1a0f2e" stroke="#e8c36a" stroke-width="2.5" stroke-linejoin="round"/>
+          <path d="M22 8 L35 13 V24 C35 32 29 37 22 40 C15 37 9 32 9 24 V13 Z" fill="none" stroke="#8a6a2f" stroke-width="1.5"/>
+          <polygon points="22,14 25,21 32.5,21.5 26.7,26.2 28.7,33.5 22,29.4 15.3,33.5 17.3,26.2 11.5,21.5 19,21" fill="#ffd86b"/>
+        </svg>
+        <span class="gtext">Charm Master</span>
+      </a>
+      <nav class="tabs" id="tabs" aria-label="Main"></nav>
+      <div class="right">
+      <div class="pill">
+        <svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><path d="M9.5 1.5 A6.5 6.5 0 1 0 14.5 10 A5 5 0 1 1 9.5 1.5Z" fill="#7cc0ff"/></svg>
+        <span id="round-pill">This month's round</span>
+      </div>
+      <button type="button" class="helpbtn" id="snd" data-snd hidden></button>
+      <button type="button" class="helpbtn" id="help" aria-label="Replay the welcome tour" title="Welcome tour" hidden>?</button>
+      <button type="button" class="avatar" id="who" aria-label="Choose who you are">?</button>
+      </div>
+    </div>
+  </header>
+
+  <div class="gutter" id="v-card" hidden>
+    <main>
+      <section class="panel hero">
+        <div class="eyebrow" id="round-eyebrow">Round</div>
+        <h1 class="gtext" id="hero-title">Your Profile</h1>
+        <p class="muted" id="hero-copy"></p>
+      </section>
+      <section class="panel progress">
+          <div class="progress-head">
+            <div class="eyebrow">Set progress</div>
+            <div class="count" id="count"></div>
+          </div>
+          <div class="segs" id="segs" role="img" aria-label="Charm set progress"></div>
+          <div class="stats">
+            <div class="stat"><strong id="stat-total" style="color: var(--gold-hi)"></strong><span class="muted">charms in total</span></div>
+            <div class="stat"><strong id="stat-spare" style="color: var(--teal)"></strong><span class="muted">spare to trade</span></div>
+          </div>
+      </section>
+
+      <section class="panel bracelet">
+          <div class="bracelet-head">
+            <h2 class="gtext">Your Bracelet</h2>
+            <div class="muted" style="font-size:14px">8 slots · one of every charm</div>
+          </div>
+          <div class="rule"></div>
+          <div class="grid" id="grid"></div>
+      </section>
+      <aside class="side">
+          <div class="panel achievement">
+            <div class="eyebrow" style="font-size:13px">Your Rank</div>
+            <div class="ach-row">
+              <div class="medal" id="medal">
+                <svg width="34" height="34" viewBox="0 0 34 34" aria-hidden="true"><polygon points="17,3 21,13 31.5,13.6 23.4,20.2 26,30.5 17,24.8 8,30.5 10.6,20.2 2.5,13.6 13,13" fill="#ffd86b"/></svg>
+              </div>
+              <div>
+                <div class="ach-title" id="rank-name">Wanderer</div>
+                <div class="muted" style="font-size:14px; line-height:1.4" id="rank-desc"></div>
+              </div>
+            </div>
+            <div class="ladder" id="ladder"></div>
+            <div class="minis" id="minis"></div>
+          </div>
+          <div class="panel deeds">
+            <h2 class="gtext" style="font-size:24px">Latest Deeds</h2>
+            <div id="deeds" style="display:flex; flex-direction:column; gap:14px"></div>
+          </div>
+      </aside>
+    </main>
+  </div>
+
+  <div class="gutter view" id="v-grant" hidden>
+    <div class="ghead">
+      <div class="eyebrow" id="grant-eyebrow">Round</div>
+      <h1 class="gtext">Grant a Charm</h1>
+      <p class="muted">Choose who earned it, say why, then cast. The charm is drawn at random from all eight, and every charm is worth the same.</p>
+    </div>
+    <div class="ggrid">
+      <form class="panel gform" id="grant-form" autocomplete="off" novalidate>
+        <div class="fgroup">
+          <label for="g-who" class="eyebrow">Who earned it?</label>
+          <select id="g-who" class="field"></select>
+        </div>
+        <div class="fgroup">
+          <label for="g-why" class="eyebrow">What did they do well?</label>
+          <textarea id="g-why" class="field" rows="4" maxlength="140" placeholder="Calmly ran the incident call and wrote it up the same day"></textarea>
+          <div class="muted small">A short reason, shown next to the charm. <span id="g-count">0/140</span></div>
+        </div>
+        <div class="actions">
+          <button type="submit" class="btn" id="g-cast">Cast the charm</button>
+          <span class="muted small">Random draw · equal odds for all 8</span>
+        </div>
+        <div class="msg bad" id="g-msg" role="alert"></div>
+        <div class="rule"></div>
+        <div class="gtext" style="font-size:22px">The eight charms in the draw</div>
+        <div class="draw" id="g-draw"></div>
+      </form>
+      <section class="panel stage" id="stage" aria-live="polite"></section>
+    </div>
+  </div>
+
+  <div class="gutter view" id="v-home" hidden>
+    <div class="home">
+      <section class="panel intro">
+        <div class="eyebrow" id="home-eyebrow">Round</div>
+        <h1 class="gtext">Charm Master</h1>
+        <p class="muted">Do something well and you are granted a magic charm, drawn at random from eight. Collect them on your bracelet, trade your spares with teammates, and complete full sets to climb the ranks before the round ends on the 1st.</p>
+        <div class="lbstats" id="lb-stats"></div>
+        <p class="muted" style="font-size:14px; margin:0">New here? <a class="linkbtn" style="min-height:0; padding:0" href="#guide">Read the guide</a></p>
+      </section>
+      <section class="panel board">
+        <div class="bracelet-head">
+          <h2 class="gtext">Leaderboard</h2>
+          <div class="muted" style="font-size:14px">Closest to a full set · <span id="lb-month"></span></div>
+        </div>
+        <div class="rule"></div>
+        <div class="lbtools" id="lb-tools" hidden>
+          <label class="sr" for="lb-q">Find a player</label>
+          <input id="lb-q" class="field" type="search" placeholder="Find a player" autocomplete="off" maxlength="40">
+        </div>
+        <div id="lb" style="display:flex; flex-direction:column; gap:10px"></div>
+        <p class="empty-note">Ranked by sets completed, then by different charms held toward the next set. Lit gem = charm held.</p>
+      </section>
+    </div>
+  </div>
+
+  <div class="gutter view" id="v-guide" hidden>
+    <div class="ghead">
+      <div class="eyebrow">Guide</div>
+      <h1 class="gtext">How to Play</h1>
+      <p class="muted">Everything you need to know about earning charms, trading spares and climbing the ranks.</p>
+    </div>
+    <section class="panel guidepage">
+      <div class="ttabs" role="tablist" id="g-tabs">
+        <a class="ttab" role="tab" href="#guide" data-g="how" aria-selected="true">How it works</a>
+        <a class="ttab" role="tab" href="#guide-charms" data-g="charms" aria-selected="false">The eight charms</a>
+        <a class="ttab" role="tab" href="#guide-ranks" data-g="ranks" aria-selected="false">Ranks</a>
+        <a class="ttab" role="tab" href="#guide-rules" data-g="rules" aria-selected="false">Rules</a>
+      </div>
+      <div class="gpane" id="gp-how">
+        <ol class="steps">
+          <li><span class="n">1</span><span><b>Earn.</b> When someone does a task well, a teammate grants them a charm and says why.</span></li>
+          <li><span class="n">2</span><span><b>Reveal.</b> The charm is drawn at random. All eight are equally likely and worth exactly the same.</span></li>
+          <li><span class="n">3</span><span><b>Collect.</b> Charms go on your bracelet. A second copy of a charm is a spare.</span></li>
+          <li><span class="n">4</span><span><b>Trade.</b> Post spares on the Open Market and take deals that give you the charms you are missing.</span></li>
+          <li><span class="n">5</span><span><b>Rank up.</b> Complete a full set of eight to rise a rank. Reach Charm Master for the top spot.</span></li>
+        </ol>
+      </div>
+      <div class="gpane" id="gp-charms" hidden>
+        <p class="muted" style="margin:0; font-size:15px">Every charm is equally likely and worth exactly the same. Collect one of each to complete a set.</p>
+        <div class="cguide" id="guide"></div>
+      </div>
+      <div class="gpane" id="gp-ranks" hidden>
+        <p class="muted" style="margin:0; font-size:15px">Every full set of all eight charms ranks you up and uses up one of each charm, so you can keep collecting. Ranks start again each round.</p>
+        <div class="ranks" id="rank-list"></div>
+      </div>
+      <div class="gpane" id="gp-rules" hidden>
+        <ul class="rules-list">
+          <li>A round is one calendar month, in UK time.</li>
+          <li>On the 1st, the final standings are saved to the Hall of Fame and every bracelet is cleared.</li>
+          <li>Admins choose who is in each month's round.</li>
+          <li>Trades are one-for-one, and an offer expires after 3 days.</li>
+          <li>Every full set ranks you up and uses up one of each charm, so you can keep collecting.</li>
+        </ul>
+      </div>
+    </section>
+  </div>
+
+  <div class="gutter view" id="v-gate">
+    <section class="panel gate">
+      <div class="eyebrow">Charm Master · <span id="gate-round"></span></div>
+      <h1 class="gtext">Who Goes There?</h1>
+      <p class="muted" id="gate-copy">Gathering the roster…</p>
+      <div id="gate-body"></div>
+    </section>
+  </div>
+
+  <div class="gutter view" id="v-admin" hidden>
+    <section class="panel roster">
+      <div class="eyebrow">Admin</div>
+      <h1 class="gtext">Run the Round</h1>
+      <p class="muted">Decide who takes part each month. Switch someone off for a round and they drop out of it; their name stays on the list.</p>
+      <div id="req-box"></div>
+      <div class="rhead" aria-hidden="true"><span>Person</span><span id="col-a"></span><span id="col-b"></span></div>
+      <div id="roster-list" style="display:flex; flex-direction:column; gap:10px"></div>
+      <form id="add-form" class="inline-form" autocomplete="off">
+        <label class="sr" for="new-name">Name of person to add</label>
+        <input id="new-name" class="field" type="text" maxlength="40" placeholder="Add a person by name" required>
+        <button type="submit" class="btn">Add to roster</button>
+      </form>
+      <div class="msg" id="admin-msg" role="status" aria-live="polite"></div>
+    </section>
+    <section class="panel roster danger" id="wipe-panel" style="margin-top:28px">
+      <div class="eyebrow">Start again</div>
+      <h2 class="gtext" style="font-size:28px; margin:0">Wipe this round</h2>
+      <p class="muted">Clears every bracelet, rank, granted charm and swap offer for <span id="wipe-round"></span> so the round starts fresh. The roster stays exactly as it is. This cannot be undone.</p>
+      <div id="wipe-body" style="display:flex; flex-direction:column; gap:16px"></div>
+      <div class="msg" id="wipe-msg" role="status" aria-live="polite"></div>
+    </section>
+  </div>
+
+  <div class="gutter view" id="v-trade" hidden>
+    <div class="ghead">
+      <div class="eyebrow" id="trade-eyebrow">Round</div>
+      <h1 class="gtext">Trading Post</h1>
+      <p class="muted">Post a spare you want to swap and say which charm you are missing. Anyone holding a spare of it can take the deal, first come first served. Offers expire after 3 days.</p>
+    </div>
+    <section class="panel tbar" id="t-bar"></section>
+    <section class="panel tpanel" id="t-market" style="margin-top:28px"></section>
+    <section class="panel tpanel" id="t-hist"></section>
+  </div>
+
+  <footer class="ground">
+    <div class="gutter">
+      <span class="note">Progress is saved and shared with the team.</span>
+      <span>Rounds clear on the 1st of each month</span>
+    </div>
+  </footer>
+</div>
+
+<div class="tour" id="tour" role="dialog" aria-modal="true" aria-label="Welcome tour" hidden></div>
+
+<script>
+(function () {
+  var CHARMS = [
+    { k: 'heart', name: 'Heart Charm', power: 'Gives life to objects', glow: '#ff5d8f', tint: '#ff8fb0' },
+    { k: 'star', name: 'Star Charm', power: 'Power of flight', glow: '#ffd84d', tint: '#ffd84d' },
+    { k: 'horseshoe', name: 'Horseshoe Charm', power: 'Power of speed', glow: '#cfd8e6', tint: '#cfd8e6' },
+    { k: 'clover', name: 'Clover Charm', power: 'Power of luck', glow: '#3ddc84', tint: '#6ef0a2' },
+    { k: 'moon', name: 'Blue Moon Charm', power: 'Power of invisibility', glow: '#6bb6ff', tint: '#8cc8ff' },
+    { k: 'unicorn', name: 'Unicorn Charm', power: 'Brings color to the world', glow: '#c4a1ff', tint: '#d4b8ff' },
+    { k: 'rainbow', name: 'Rainbow Charm', power: 'Power to teleport', glow: '#ffa94d', tint: '#ffc280' },
+    { k: 'balloon', name: 'Red Balloon Charm', power: 'Power to float', glow: '#ff4d4d', tint: '#ff7b7b' }
+  ];
+  // Each completed set of all 8 charms ranks you up. Ranks start again every round.
+  var RANKS = [
+    { name: 'Wanderer', sets: 0, metal: 'bronze' }, { name: 'Apprentice', sets: 1, metal: 'bronze' }, { name: 'Adept', sets: 2, metal: 'silver' },
+    { name: 'Enchanter', sets: 3, metal: 'silver' }, { name: 'Archmage', sets: 4, metal: 'gold' }, { name: 'Charm Master', sets: 5, metal: 'gold' }
+  ];
+  function rankFor(sets) { var r = RANKS[0]; for (var i = 0; i < RANKS.length; i++) if (sets >= RANKS[i].sets) r = RANKS[i]; return r; }
+  function nextRank(sets) { for (var i = 0; i < RANKS.length; i++) if (RANKS[i].sets > sets) return RANKS[i]; return null; }
+  function rankIdx(sets) { var k = 0; for (var i = 0; i < RANKS.length; i++) if (sets >= RANKS[i].sets) k = i; return k; }
+  function setsOf(id) { return id === cardFor ? S.mySets : ((S.cards[id] && S.cards[id].sets) || 0); }
+
+  // Rank avatars: one animated medallion per rank, drawn inline so every copy animates.
+  var GEMS = ['#ff5d8f', '#ffd84d', '#cfd8e6', '#3ddc84', '#6bb6ff', '#c4a1ff', '#ffa94d', '#ff4d4d'];
+
+  function pt(cx, cy, r, deg) { var a = (deg - 90) * Math.PI / 180; return [cx + r * Math.cos(a), cy + r * Math.sin(a)]; }
+  function starPts(cx, cy, ro, ri, n) {
+    var out = [];
+    for (var i = 0; i < n * 2; i++) { var p = pt(cx, cy, i % 2 ? ri : ro, i * 180 / n); out.push(p[0].toFixed(1) + ',' + p[1].toFixed(1)); }
+    return out.join(' ');
+  }
+
+  var defs = '<defs>' +
+    '<radialGradient id="disc" cx="50%" cy="38%" r="70%"><stop offset="0" stop-color="#4a2f86"/><stop offset="1" stop-color="#120a22"/></radialGradient>' +
+    '<linearGradient id="gBronze" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#f0bb7c"/><stop offset="1" stop-color="#8a5524"/></linearGradient>' +
+    '<linearGradient id="gSilver" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#f6f9fd"/><stop offset="1" stop-color="#8191ad"/></linearGradient>' +
+    '<linearGradient id="gGold" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fff2b8"/><stop offset="0.55" stop-color="#e8c36a"/><stop offset="1" stop-color="#b9821f"/></linearGradient>' +
+    '<radialGradient id="lamp" cx="50%" cy="45%" r="60%"><stop offset="0" stop-color="#fff6c4"/><stop offset="1" stop-color="#ff9a3c"/></radialGradient>' +
+    '<radialGradient id="orb" cx="40%" cy="35%" r="70%"><stop offset="0" stop-color="#c9fff6"/><stop offset="0.5" stop-color="#4fd6c6"/><stop offset="1" stop-color="#2a1a6e"/></radialGradient>' +
+    '<radialGradient id="sun" cx="50%" cy="50%" r="50%"><stop offset="0" stop-color="#ffffff"/><stop offset="0.45" stop-color="#ffe9a0"/><stop offset="1" stop-color="#e8a83a"/></radialGradient>' +
+    '<radialGradient id="glow"><stop offset="0" stop-color="#ffd86b" stop-opacity="0.5"/><stop offset="1" stop-color="#ffd86b" stop-opacity="0"/></radialGradient>' +
+    '<radialGradient id="glowT"><stop offset="0" stop-color="#6ee8d8" stop-opacity="0.5"/><stop offset="1" stop-color="#6ee8d8" stop-opacity="0"/></radialGradient>' +
+    '</defs>';
+
+  // Frame: ring and ornament by rank.
+  function frame(i) {
+    var g = 'url(#' + (RANKS[i].metal === 'bronze' ? 'gBronze' : RANKS[i].metal === 'silver' ? 'gSilver' : 'gGold') + ')';
+    var s = '';
+    if (i === 3) { // silver points at N E S W
+      for (var k = 0; k < 4; k++) s += '<polygon points="60,1 66,13 60,20 54,13" fill="' + g + '" stroke="#5b6a85" stroke-width="1" transform="rotate(' + (k * 90) + ' 60 60)"/>';
+    }
+    if (i === 5) { // eight rays behind ring
+      s += '<g class="c-rays"><polygon points="' + starPts(60, 60, 59, 52, 16) + '" fill="' + g + '" opacity="0.9"/></g>';
+    }
+    s += '<circle cx="60" cy="60" r="52" fill="url(#disc)" stroke="' + g + '" stroke-width="' + (i < 2 ? 5 : 7) + '"/>';
+    s += '<circle cx="60" cy="60" r="45" fill="none" stroke="rgba(255,255,255,0.28)" stroke-width="1"/>';
+    if (i === 1) { for (var a = 0; a < 8; a++) { var p = pt(60, 60, 52, a * 45); s += '<circle class="a-stud" style="animation-delay:' + (a * 0.25).toFixed(2) + 's" cx="' + p[0].toFixed(1) + '" cy="' + p[1].toFixed(1) + '" r="2.6" fill="#ffe0b0" stroke="#8a5524" stroke-width="1"/>'; } }
+    if (i === 4) { for (var b = 0; b < 4; b++) { var q = pt(60, 60, 52, b * 90); s += '<circle class="m-gem" style="animation-delay:' + (b * 0.6).toFixed(1) + 's" cx="' + q[0].toFixed(1) + '" cy="' + q[1].toFixed(1) + '" r="5.2" fill="' + ['#ff5d8f', '#6bb6ff', '#3ddc84', '#c4a1ff'][b] + '" stroke="#fff2b8" stroke-width="1.5"/>'; } }
+    if (i === 5) {
+      for (var c = 0; c < 8; c++) { var r = pt(60, 60, 52, c * 45 + 22.5); s += '<circle class="c-gem" style="animation-delay:' + (c * 0.3).toFixed(1) + 's" cx="' + r[0].toFixed(1) + '" cy="' + r[1].toFixed(1) + '" r="4.2" fill="' + GEMS[c] + '" stroke="#fff2b8" stroke-width="1.3"/>'; }
+      s += '<g class="c-crown"><polygon points="42,15 42,3 50,9 60,0 70,9 78,3 78,15" fill="url(#gGold)" stroke="#8a5a10" stroke-width="1.2" stroke-linejoin="round"/><circle cx="60" cy="6" r="2.2" fill="#ff5d8f"/></g><polygon class="c-glint" points="' + starPts(60, 6, 9, 2, 4) + '" fill="#fff"/>';
+    }
+    return s;
+  }
+
+  var EMBLEM = [
+    // Wanderer: lantern that flickers and sways, sparks drift up
+    '<g class="w-swing"><circle class="w-glow" cx="60" cy="56" r="26" fill="url(#glow)"/>' +
+    '<path d="M51 36 Q60 22 69 36" fill="none" stroke="#d9b36a" stroke-width="3" stroke-linecap="round"/>' +
+    '<path d="M49 41 L71 41 L66 35 L54 35 Z" fill="#b8793a"/>' +
+    '<rect class="w-body" x="51" y="41" width="18" height="29" rx="3" fill="url(#lamp)" stroke="#d9b36a" stroke-width="2"/>' +
+    '<line x1="60" y1="41" x2="60" y2="70" stroke="#7a4a1a" stroke-width="1.5"/>' +
+    '<rect x="48" y="70" width="24" height="6" rx="2" fill="#b8793a"/></g>' +
+    '<circle class="w-spark" cx="57" cy="34" r="1.7" fill="#ffd27a"/><circle class="w-spark s2" cx="64" cy="34" r="1.4" fill="#ffb347"/>' +
+    '<circle class="tw" cx="36" cy="36" r="1.6" fill="#fff"/><circle class="tw" style="animation-delay:.8s" cx="84" cy="44" r="1.3" fill="#fff"/><circle class="tw" style="animation-delay:1.4s" cx="82" cy="80" r="1.4" fill="#ffe9a8"/>',
+    // Apprentice: fluttering book, floating spark
+    '<path d="M60 84 L60 50 Q47 43 31 47 L31 82 Q47 78 60 84 Z" fill="#f3e8c8" stroke="#b8793a" stroke-width="2" stroke-linejoin="round"/>' +
+    '<g class="a-page"><path d="M60 84 L60 50 Q73 43 89 47 L89 82 Q73 78 60 84 Z" fill="#ead9b0" stroke="#b8793a" stroke-width="2" stroke-linejoin="round"/>' +
+    '<path d="M65 55 Q73 52 83 55 M65 62 Q73 59 83 62" fill="none" stroke="#a88a5a" stroke-width="1.6" stroke-linecap="round"/></g>' +
+    '<path d="M37 55 Q47 52 55 55 M37 62 Q47 59 55 62 M37 69 Q47 66 55 69" fill="none" stroke="#a88a5a" stroke-width="1.6" stroke-linecap="round"/>' +
+    '<polygon class="a-star" points="' + starPts(60, 34, 11, 4.5, 4) + '" fill="#ffd86b" stroke="#fff2b8" stroke-width="1"/>' +
+    '<circle class="tw" cx="42" cy="32" r="1.5" fill="#fff"/><circle class="tw" style="animation-delay:1s" cx="80" cy="30" r="1.5" fill="#fff"/>',
+    // Adept: waving wand, pulsing star
+    '<g class="d-wand"><circle cx="78" cy="42" r="20" fill="url(#glow)"/>' +
+    '<line x1="35" y1="86" x2="74" y2="47" stroke="#5a3a1a" stroke-width="6" stroke-linecap="round"/>' +
+    '<line x1="35" y1="86" x2="74" y2="47" stroke="#9a6a3a" stroke-width="2.4" stroke-linecap="round"/>' +
+    '<line x1="62" y1="59" x2="68" y2="53" stroke="#f6f9fd" stroke-width="6" stroke-linecap="butt"/>' +
+    '<polygon class="d-star" points="' + starPts(80, 40, 15, 6, 4) + '" fill="#ffd86b" stroke="#fff2b8" stroke-width="1.3" stroke-linejoin="round"/></g>' +
+    '<circle class="tw" cx="46" cy="40" r="2" fill="#fff"/><circle class="tw" style="animation-delay:.6s" cx="92" cy="66" r="1.6" fill="#ffe9a8"/><circle class="tw" style="animation-delay:1.2s" cx="58" cy="30" r="1.4" fill="#fff"/><circle class="tw" style="animation-delay:1.7s" cx="34" cy="62" r="1.5" fill="#cfe6ff"/>',
+    // Enchanter: breathing orb, turning swirl
+    '<path d="M42 86 L78 86 L71 74 L49 74 Z" fill="url(#gSilver)" stroke="#5b6a85" stroke-width="1.5" stroke-linejoin="round"/>' +
+    '<circle class="e-glow" cx="60" cy="52" r="26" fill="url(#glowT)"/>' +
+    '<g class="e-orb"><circle cx="60" cy="52" r="20" fill="url(#orb)" stroke="#bfe9ff" stroke-width="2"/>' +
+    '<path class="e-swirl" d="M46 54 Q54 40 66 48 Q74 54 64 62" fill="none" stroke="rgba(255,255,255,0.75)" stroke-width="2" stroke-linecap="round"/>' +
+    '<ellipse cx="52" cy="42" rx="5" ry="3" fill="#fff" opacity="0.55" transform="rotate(-30 52 42)"/></g>' +
+    '<polygon class="tw" points="' + starPts(88, 34, 6, 2.4, 4) + '" fill="#fff"/><polygon class="tw" style="animation-delay:1s" points="' + starPts(32, 40, 5, 2, 4) + '" fill="#bfe9ff"/><circle class="tw" style="animation-delay:.5s" cx="90" cy="66" r="1.5" fill="#fff"/>',
+    // Archmage: swaying hat, bobbing moon, twinkling star
+    '<g class="m-moon"><path d="M86 28 A13 13 0 1 0 90 50 A10 10 0 1 1 86 28 Z" fill="#ffe9a8"/></g>' +
+    '<g class="m-hat"><ellipse cx="60" cy="76" rx="30" ry="7" fill="#35205f" stroke="#e8c36a" stroke-width="2"/>' +
+    '<path d="M64 20 Q58 42 43 74 L77 74 Q66 46 64 20 Z" fill="#4a2f86" stroke="#e8c36a" stroke-width="2" stroke-linejoin="round"/>' +
+    '<path d="M45 67 L75 67" stroke="#e8c36a" stroke-width="4.5"/>' +
+    '<polygon class="m-star" points="' + starPts(60, 51, 7.5, 3, 5) + '" fill="#ffd86b"/></g>' +
+    '<circle class="tw" cx="34" cy="38" r="1.7" fill="#fff"/><circle class="tw" style="animation-delay:1s" cx="40" cy="26" r="1.3" fill="#ffe9a8"/>',
+    // Charm Master: pulsing sun
+    '<circle class="c-halo" cx="60" cy="62" r="34" fill="url(#glow)"/>' +
+    '<polygon points="' + starPts(60, 62, 34, 15, 8) + '" fill="url(#gGold)" stroke="#8a5a10" stroke-width="1.5" stroke-linejoin="round"/>' +
+    '<polygon points="' + starPts(60, 62, 22, 11, 8) + '" fill="#fff2b8" opacity="0.7"/>' +
+    '<circle class="c-core" cx="60" cy="62" r="11" fill="url(#sun)" stroke="#fff" stroke-width="1.5"/>'
+  ];
+  
+  function avatar(i, cls) { return '<svg class="av' + (cls ? ' ' + cls : '') + '" viewBox="0 0 120 120" aria-hidden="true">' + frame(i) + EMBLEM[i] + '</svg>'; }
+  $('sprites').insertAdjacentHTML('beforeend', defs);
+  var lbLast = '', rankListBuilt = false;
+  var MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+  var TZ = 'Europe/London';
+
+  function $(id) { return document.getElementById(id); }
+  function esc(s) {
+    return String(s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; });
+  }
+
+  // Rounds are calendar months in UK time, keyed YYYY-MM.
+  function ukToday() {
+    var p = {};
+    new Intl.DateTimeFormat('en-GB', { timeZone: TZ, year: 'numeric', month: 'numeric', day: 'numeric' })
+      .formatToParts(new Date()).forEach(function (x) { p[x.type] = x.value; });
+    return { y: +p.year, m: +p.month, d: +p.day };
+  }
+  function rid(y, m) { return y + '-' + (m < 10 ? '0' : '') + m; }
+  var T = ukToday();
+  var N = T.m === 12 ? { y: T.y + 1, m: 1 } : { y: T.y, m: T.m + 1 };
+  var CUR = rid(T.y, T.m), NEXT = rid(N.y, N.m);
+  var CUR_LONG = MONTHS[T.m - 1] + ' ' + T.y;
+  var CUR_SHORT = MONTHS[T.m - 1].slice(0, 3), NEXT_SHORT = MONTHS[N.m - 1].slice(0, 3);
+  var CUR_NAME = MONTHS[T.m - 1], NEXT_NAME = MONTHS[N.m - 1];
+  var DAYS_LEFT = new Date(T.y, T.m, 0).getDate() - T.d;
+
+  // Remembering who you are on this device is a per-viewer convenience only.
+  var KEY = 'charm-chart.me';
+  function loadMe() { try { return localStorage.getItem(KEY); } catch (e) { return null; } }
+  var KEYP = 'charm-master.pending';
+  function loadPend() { try { return localStorage.getItem(KEYP); } catch (e) { return null; } }
+  function savePend(v) { try { if (v) localStorage.setItem(KEYP, v); else localStorage.removeItem(KEYP); } catch (e) {} }
+  function saveMe(v) { try { if (v) localStorage.setItem(KEY, v); else localStorage.removeItem(KEY); } catch (e) {} }
+
+  var S = { db: null, ready: false, nodb: false, err: false, people: [], cards: {}, grants: [], trades: [], wipe: { step: 0, busy: false, msg: '', bad: false }, t: { give: '', want: '', busy: false, busyId: '', msg: '', bad: false, notice: null, open: false, tab: 'you', filter: '', shown: 12 }, g: { phase: 'idle' }, tour: { open: false, step: 0 }, tourAuto: false, me: loadMe(), pend: loadPend(), hd: { shown: 10, q: '' }, declined: false, joinMsg: '', counts: {}, mySets: 0, msg: '', bad: false };
+  var unCard = null, cardFor = null, gateSig = '', msgTimer = null;
+
+  function inRound(p, r) { return !!(p.rounds && p.rounds[r] === true); }
+  function eligible(p) { return p.role === 'admin' || inRound(p, CUR); }
+  function pendingList() { return S.people.filter(function (p) { return p.status === 'pending'; }); }
+  function person(id) { for (var i = 0; i < S.people.length; i++) if (S.people[i].id === id) return S.people[i]; return null; }
+  function me() { var p = S.me && person(S.me); return p && eligible(p) ? p : null; }
+  function initials(n) {
+    var w = String(n).split(/\s+/).filter(Boolean);
+    return ((w[0] || '?').charAt(0) + (w.length > 1 ? w[w.length - 1].charAt(0) : '')).toUpperCase();
+  }
+  function slug(n) {
+    var s = String(n).toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 30);
+    return (s || 'person') + '-' + Math.random().toString(36).slice(2, 5);
+  }
+  function route() {
+    var m = me();
+    if (location.hash === '#home' && m) return 'home';
+    if (location.hash === '#grant' && m) return 'grant';
+    if (location.hash === '#trade' && m) return 'trade';
+    if (/^#guide(-|$)/.test(location.hash) && m) return 'guide';
+    return (location.hash === '#admin' && m && m.role === 'admin') ? 'admin' : 'card';
+  }
+  function say(text, bad) {
+    S.msg = text; S.bad = !!bad;
+    var el = $('admin-msg');
+    el.textContent = text; el.className = 'msg' + (bad ? ' bad' : '');
+    clearTimeout(msgTimer);
+    msgTimer = setTimeout(function () { S.msg = ''; el.textContent = ''; }, 6000);
+  }
+
+  // ---- data ----
+  function addPerson(name, role) {
+    name = String(name).trim().replace(/\s+/g, ' ');
+    if (!name) return Promise.reject({ code: 'empty' });
+    var lower = name.toLowerCase();
+    if (S.people.some(function (p) { return p.name.toLowerCase() === lower; })) return Promise.reject({ code: 'duplicate' });
+    var id = slug(name), rounds = {};
+    rounds[CUR] = true; rounds[NEXT] = true;
+    return S.db.doc('people/' + id).set({ name: name, role: role, rounds: rounds }).then(function () { return id; });
+  }
+  function watchCard() {
+    var m = me(), want = m ? m.id : null;
+    if (want === cardFor) return;
+    if (unCard) { unCard(); unCard = null; }
+    cardFor = want; S.counts = {}; S.mySets = 0;
+    if (!want || !S.db) return;
+    unCard = S.db.doc('cards/' + CUR + '__' + want).onSnapshot(function (s) {
+      var d = s.exists ? s.data() : null;
+      S.counts = (d && d.counts && typeof d.counts === 'object') ? d.counts : {};
+      S.mySets = d ? Math.max(0, Math.floor(+d.sets || 0)) : 0;
+      render();
+    }, function () { S.counts = {}; });
+  }
+
+  // ---- views ----
+  function render() {
+    if (!me() && S.pend && S.ready) {
+      var ap = person(S.pend);
+      if (ap && ap.status !== 'pending' && eligible(ap)) { S.me = ap.id; saveMe(ap.id); S.pend = null; savePend(null); gateSig = ''; location.hash = '#profile'; }
+    }
+    watchCard();
+    var m = me(), r = route();
+    $('round-pill').textContent = CUR_SHORT + ' ' + T.y + ' round · ' +
+      (DAYS_LEFT === 0 ? 'last day' : DAYS_LEFT === 1 ? '1 day left' : DAYS_LEFT + ' days left');
+    var av = $('who'), ak = m ? 'r' + rankIdx(setsOf(m.id)) : '?';
+    if (av.getAttribute('data-k') !== ak) {
+      av.setAttribute('data-k', ak);
+      if (m) { av.innerHTML = avatar(rankIdx(setsOf(m.id))); av.classList.add('has-av'); }
+      else { av.textContent = '?'; av.classList.remove('has-av'); }
+    }
+    av.setAttribute('aria-label', m ? 'Signed in as ' + m.name + '. Switch person.' : 'Choose who you are');
+    $('v-gate').hidden = !!m;
+    $('help').hidden = !m; $('snd').hidden = !m;
+    if (m && S.ready && !S.tourAuto && m.welcomed !== CUR) { S.tourAuto = true; openTour(); }
+    $('v-card').hidden = !m || r !== 'card';
+    $('v-home').hidden = !m || r !== 'home';
+    $('v-grant').hidden = !m || r !== 'grant';
+    $('v-admin').hidden = !m || r !== 'admin';
+    $('v-trade').hidden = !m || r !== 'trade';
+    $('v-guide').hidden = !m || r !== 'guide';
+    var brand = document.querySelector('.brand');
+    if (m && r === 'home') brand.setAttribute('aria-current', 'page'); else brand.removeAttribute('aria-current');
+    var tabs = [['card', 'My Profile', 'profile'], ['grant', 'Grant'], ['trade', 'Trade'], ['guide', 'Guide']];
+    if (m && m.role === 'admin') tabs.push(['admin', 'Admin']);
+    var inbox = m ? incoming(m.id).length : 0;
+    var reqs = (m && m.role === 'admin') ? pendingList().length : 0;
+    $('tabs').innerHTML = m ? tabs.map(function (t) {
+      var dot = (t[0] === 'trade' && inbox) ? '<span class="dot" aria-label="' + inbox + ' offer' + (inbox === 1 ? '' : 's') + ' waiting">' + (inbox > 9 ? '9+' : inbox) + '</span>' : '';
+      if (t[0] === 'admin' && reqs) dot = '<span class="dot" aria-label="' + reqs + ' join request' + (reqs === 1 ? '' : 's') + '">' + (reqs > 9 ? '9+' : reqs) + '</span>';
+      return '<a class="tab" href="#' + (t[2] || t[0]) + '"' + (t[0] === r ? ' aria-current="page"' : '') + '>' + t[1] + dot + '</a>';
+    }).join('') : '';
+    if (!m) renderGate();
+    else if (r === 'trade') renderTrade(m);
+    else if (r === 'guide') renderGuide();
+    else if (r === 'admin') renderAdmin();
+    else if (r === 'home') renderHome(m);
+    else if (r === 'grant') renderGrant(m);
+    else renderCard(m);
+  }
+
+  // ---- granting ----
+  function charmByKey(k) { for (var i = 0; i < CHARMS.length; i++) if (CHARMS[i].k === k) return CHARMS[i]; return null; }
+  function fmtDay(iso) {
+    var d = new Date(iso);
+    return isNaN(d) ? '' : d.toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short', timeZone: TZ });
+  }
+  function drawIndex() {
+    try { var a = new Uint8Array(1); crypto.getRandomValues(a); return a[0] & 7; } catch (e) { return Math.floor(Math.random() * 8); }
+  }
+  function sleep(ms) { return new Promise(function (r) { setTimeout(r, ms); }); }
+
+  // Adds one charm to a card. A short lease keeps two simultaneous grants to the same person from overwriting each other.
+  function grantCharm(byId, toId, idx, why) {
+    var key = CHARMS[idx].k;
+    var ref = S.db.doc('cards/' + CUR + '__' + toId);
+    function lock(i) {
+      return ref.acquire({ holder: byId, ttlMs: 4000 }).then(function (r) {
+        if (r.acquired) return true;
+        if (i >= 7) throw { code: 'busy' };
+        return sleep(500 + Math.random() * 500).then(function () { return lock(i + 1); });
+      }, function () { return false; });
+    }
+    var done = 0, sets = 0;
+    return lock(0).then(function () { return ref.get(); }).then(function (s) {
+      var d = s.exists ? s.data() : null;
+      var cur = (d && d.counts && typeof d.counts === 'object') ? d.counts : {};
+      var counts = {};
+      CHARMS.forEach(function (c) { counts[c.k] = Math.max(0, Math.floor(+cur[c.k] || 0)); });
+      counts[key] += 1;
+      sets = Math.max(0, Math.floor(+(d && d.sets) || 0));
+      // A full bracelet ranks you up and uses one of each charm; spares stay on the card.
+      while (CHARMS.every(function (c) { return counts[c.k] >= 1; })) {
+        CHARMS.forEach(function (c) { counts[c.k] -= 1; });
+        sets++; done++;
+      }
+      var body = { roundId: CUR, personId: toId, counts: counts, sets: sets };
+      return s.exists ? ref.update(body) : ref.set(body);
+    }).then(function () {
+      return S.db.collection('grants').add({ roundId: CUR, toId: toId, byId: byId, charm: key, reason: why, at: new Date().toISOString() })
+        .then(function () { return { noteFailed: false, done: done, sets: sets }; }, function () { return { noteFailed: true, done: done, sets: sets }; });
+    });
+  }
+
+  function runes(cls, bright, core) {
+    var c1 = bright ? '#ffd86b' : '#c99a3e', c2 = bright ? '#e8c36a' : '#8a6a2f';
+    return '<div class="runes"><div class="ring ' + cls + '"><svg width="260" height="260" viewBox="0 0 260 260" aria-hidden="true">' +
+      '<circle cx="130" cy="130" r="122" fill="none" stroke="' + c1 + '" stroke-width="3"/>' +
+      '<circle cx="130" cy="130" r="112" fill="none" stroke="' + c2 + '" stroke-width="8" stroke-dasharray="3 9"/>' +
+      (bright ? '' : '<circle cx="130" cy="130" r="96" fill="none" stroke="#e8c36a" stroke-width="2"/>') +
+      '<polygon points="130,38 209.7,176 50.3,176" fill="none" stroke="' + c1 + '" stroke-width="2.5" stroke-linejoin="round"/>' +
+      '<polygon points="130,222 50.3,84 209.7,84" fill="none" stroke="' + c1 + '" stroke-width="2.5" stroke-linejoin="round"/>' +
+      (bright ? '<circle cx="130" cy="8" r="6" fill="#ff9a3c"/><circle cx="252" cy="130" r="5" fill="#6ee8d8"/><circle cx="130" cy="252" r="6" fill="#ff9a3c"/><circle cx="8" cy="130" r="5" fill="#6ee8d8"/>' : '') +
+      '</svg></div>' + core + '</div>';
+  }
+
+  function charged(r) {
+    var dots = '<div class="charge" aria-hidden="true">';
+    for (var i = 0; i < 16; i++) dots += '<i style="--a:' + (i * 22.5) + 'deg; animation-delay:-' + ((i * 0.17) % 1.4).toFixed(2) + 's"></i>';
+    return r.slice(0, -6) + dots + '</div></div>';
+  }
+  function revealBurst(c) {
+    var sp = '';
+    for (var i = 0; i < 22; i++) {
+      var a = Math.round(i * (360 / 22) + (i % 3) * 5), d = 135 + ((i * 37) % 70), t = ((i % 5) * 0.05).toFixed(2), sz = 4 + (i % 3) * 2;
+      sp += '<i style="--a:' + a + 'deg; --d:' + d + 'px; --z:' + sz + 'px; animation-delay:' + t + 's"></i>';
+    }
+    return '<div class="rv" style="--gc:' + c.glow + '"><div class="flash"></div><div class="rays"></div>' +
+      '<div class="shock"></div><div class="shock s2"></div><div class="sparks">' + sp + '</div>' +
+      '<div class="emerge"><div class="socket"><svg class="float" aria-hidden="true"><use href="#c-' + c.k + '"/></svg></div></div></div>';
+  }
+  var stageSig = '', grantSig = '';
+  function renderStage() {
+    var g = S.g, to = person(g.toId);
+    var sig = [g.phase, g.pick, g.toId, g.why, g.note, g.done, g.sets, to ? to.name : ''].join('#');
+    if (sig === stageSig) return;
+    stageSig = sig;
+    var html = '';
+    if (g.phase === 'idle') {
+      html = runes('slow', false, '<div class="core" style="background:radial-gradient(circle at 50% 38%, #6a3fd0, #1a0f2e 75%); border:3px solid #e8c36a; box-shadow:0 0 30px rgba(150,110,255,0.7)"><span style="font-family:var(--display); font-size:56px; font-weight:700; color:#fff1c1">?</span></div>') +
+        '<div class="gtext stage-title">Ready when you are</div><div class="muted" style="max-width:340px; line-height:1.5">Choose someone, add a reason, then cast the charm.</div>';
+    } else if (g.phase === 'casting') {
+      html = charged(runes('fast', true, '<div class="core pulse" style="background:radial-gradient(circle at 50% 38%, #fff6cf, #ffd86b 45%, #ff7ac8); border:3px solid #fff1c1; box-shadow:0 0 50px rgba(255,216,107,0.9)"></div>')) +
+        '<div class="gtext stage-title">Casting…</div><div class="muted">Something lucky is on its way.</div>';
+    } else if (g.phase === 'reveal') {
+      var c = CHARMS[g.pick];
+      html = revealBurst(c) +
+        '<div class="eyebrow rvin" style="font-size:13px; color:var(--teal); --d:0.75s">' + esc(to ? to.name : 'They') + ' receives</div>' +
+        '<div class="stage-title rvin" style="font-size:36px; color:' + c.tint + '; --d:0.95s; text-shadow:0 0 24px ' + c.glow + '">' + c.name + '</div>' +
+        '<div class="rvin" style="color:var(--green); --d:1.15s">Use: ' + c.power + '</div>' +
+        '<div class="stage-note rvin" style="--d:1.35s">Granted to <strong>' + esc(to ? to.name : 'a teammate') + '</strong> for: ' + esc(g.why) + '</div>' +
+        (g.done ? '<div class="rankup rvin" style="--d:1.8s">' + avatar(rankIdx(g.sets)) + '<span>Set complete! ' + esc(to ? to.name : 'They') + ' is now ' + esc(rankFor(g.sets).name) + '</span></div>' : '') +
+        (g.note ? '<div class="msg bad">The charm was granted, but the note could not be saved to the feed.</div>' : '') +
+        '<div class="stage-btns rvin" style="--d:' + (g.done ? '2.2s' : '1.6s') + '"><a class="btn" href="#home">See the leaderboard</a><button type="button" class="btn2" id="g-again">Cast another</button></div>';
+    } else {
+      html = '<div class="gtext stage-title">The spell fizzled</div><div class="muted" style="max-width:340px; line-height:1.5">Nothing was granted. Check your connection and try again.</div>' +
+        '<div class="stage-btns"><button type="button" class="btn2" id="g-again">Try again</button></div>';
+    }
+    $('stage').innerHTML = html;
+  }
+
+  function renderGrant(m) {
+    $('grant-eyebrow').textContent = 'Round · ' + CUR_LONG;
+    var opts = S.people.filter(function (p) { return p.id !== m.id && inRound(p, CUR); });
+    var sig = m.id + '#' + opts.map(function (p) { return p.id + p.name; }).join('|');
+    if (sig !== grantSig) {
+      grantSig = sig;
+      var sel = $('g-who'), keep = sel.value;
+      sel.innerHTML = '<option value="">' + (opts.length ? 'Choose a teammate…' : 'No teammates in this round yet') + '</option>' +
+        opts.map(function (p) { return '<option value="' + esc(p.id) + '">' + esc(p.name) + '</option>'; }).join('');
+      sel.value = keep;
+      if (sel.value !== keep) sel.value = '';
+    }
+    if (!$('g-draw').firstChild) {
+      $('g-draw').innerHTML = CHARMS.map(function (c) { return '<div class="dchip"><svg aria-hidden="true"><use href="#c-' + c.k + '"/></svg></div>'; }).join('');
+    }
+    renderStage();
+  }
+
+  function renderDeeds(m) {
+    var mine = S.grants.filter(function (g) { return g.toId === m.id; }).slice(0, 6);
+    $('deeds').innerHTML = mine.length ? mine.map(function (g) {
+      var c = charmByKey(g.charm), by = person(g.byId);
+      return '<div class="deed"><svg aria-hidden="true"><use href="#c-' + c.k + '"/></svg><div><b style="color:' + c.tint + '">' + c.name + '</b><span>' + esc(g.reason) + '</span><time>From ' + esc(by ? by.name : 'a teammate') + ' · ' + fmtDay(g.at) + '</time></div></div>';
+    }).join('') : '<p class="muted" style="margin:0; font-size:14px; line-height:1.5">No deeds yet this round. When a charm is granted, the reason it was earned appears here.</p>';
+  }
+
+  function renderHome(m) {
+    $('home-eyebrow').textContent = 'Round · ' + CUR_LONG + ' · ' +
+      (DAYS_LEFT === 0 ? 'last day' : DAYS_LEFT === 1 ? '1 day left' : DAYS_LEFT + ' days left');
+    $('lb-month').textContent = CUR_LONG;
+    var rows = S.people.filter(function (p) { return inRound(p, CUR); }).map(function (p) {
+      var ent = S.cards[p.id] || {}, c = ent.counts || {}, sets = ent.sets || 0, types = 0, total = 0;
+      var has = CHARMS.map(function (ch) {
+        var n = Math.max(0, Math.floor(+c[ch.k] || 0));
+        if (n > 0) types++;
+        total += n;
+        return n > 0;
+      });
+      return { p: p, has: has, types: types, total: total, sets: sets };
+    }).sort(function (a, b) { return b.sets - a.sets || b.types - a.types || b.total - a.total || a.p.name.localeCompare(b.p.name); });
+    rows.forEach(function (r, i) {
+      var q = rows[i - 1];
+      r.rank = (i > 0 && q.sets === r.sets && q.types === r.types && q.total === r.total) ? q.rank : i + 1;
+    });
+    var granted = rows.reduce(function (s, r) { return s + r.total; }, 0);
+    var best = rows.length ? rows[0] : null;
+    var fulls = rows.reduce(function (s, r) { return s + r.sets; }, 0);
+    function stat(col, svg, val, label) {
+      return '<div class="lbstat" style="color:' + col + '"><div class="gi"><svg width="20" height="20" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">' + svg + '</svg></div><div class="tx"><strong>' + val + '</strong><span class="l">' + label + '</span></div></div>';
+    }
+    $('lb-stats').innerHTML =
+      stat('var(--gold-hi)', '<path d="M10 1.5 L17 10 L10 18.5 L3 10Z"/>', granted, 'Charms granted') +
+      stat('var(--teal)', '<circle cx="7" cy="6.5" r="3"/><circle cx="14" cy="7.5" r="2.4"/><path d="M1.5 17 C1.5 12.5 12.5 12.5 12.5 17Z"/><path d="M12.5 12.6 C16 12 19 13.5 19 17 H14.5 C14.5 15.2 13.8 13.6 12.5 12.6Z"/>', rows.length, 'In this round') +
+      stat('#ff9fd0', '<path d="M10 1.5 L12.4 7 L18.5 7.6 L13.9 11.6 L15.3 17.6 L10 14.5 L4.7 17.6 L6.1 11.6 L1.5 7.6 L7.6 7Z"/>', esc(rankFor(best ? best.sets : 0).name), 'Top rank') +
+      stat('#cfb3ff', '<path d="M10 2 L18 6 V10.5 C18 14.5 14.5 17.2 10 18.5 C5.5 17.2 2 14.5 2 10.5 V6Z"/>', fulls, 'Sets completed');
+    function lbRow(r) {
+      var you = r.p.id === m.id;
+      return '<div class="lbrow' + (you ? ' you' : '') + (r.rank === 1 && r.total > 0 ? ' first' : '') + '">' +
+        '<div class="rank">' + r.rank + '</div>' +
+        '<div class="lbav">' + avatar(rankIdx(r.sets)) + '</div>' +
+        '<div class="lbname"><div class="nm"><span class="t">' + esc(r.p.name) + '</span>' + (you ? '<span class="youtag">You</span>' : '') + '</div>' +
+        '<span class="rtitle">' + esc(rankFor(r.sets).name) + ' · ' + r.sets + (r.sets === 1 ? ' set' : ' sets') + '</span></div>' +
+        '<div class="gems" role="img" aria-label="' + esc(r.p.name) + ' holds ' + r.types + ' of 8 different charms">' +
+        CHARMS.map(function (ch, i) { return '<div class="gem' + (r.has[i] ? ' on' : '') + '" style="--gc:' + ch.glow + '"></div>'; }).join('') + '</div>' +
+        '<div class="lbscore"><strong>' + r.types + '/8</strong><span>' + r.total + ' charm' + (r.total === 1 ? '' : 's') + '</span></div></div>';
+    }
+    $('lb-tools').hidden = rows.length <= 10;
+    var q = S.hd.q.trim().toLowerCase();
+    var vis = (q && rows.length > 10) ? rows.filter(function (r) { return r.p.name.toLowerCase().indexOf(q) >= 0; }) : rows;
+    var shownRows = vis.slice(0, S.hd.shown);
+    var meRow = null; rows.forEach(function (r) { if (r.p.id === m.id) meRow = r; });
+    var pin = (!q && meRow && shownRows.indexOf(meRow) < 0) ? meRow : null;
+    var lbHtml = rows.length ? (vis.length ? shownRows.map(lbRow).join('') : '<p class="empty-note">No one matches that name.</p>') +
+      (vis.length > shownRows.length ? '<div style="text-align:center"><button type="button" class="btn2" data-lb="more">Show more (' + (vis.length - shownRows.length) + ' more)</button></div>' : '') +
+      (pin ? '<div class="lbgap">Your position</div>' + lbRow(pin) : '')
+      : '<p class="empty-note">No one is in the ' + esc(CUR_NAME) + ' round yet. An admin can add people from the Admin tab.</p>';
+    if (lbHtml !== lbLast) { lbLast = lbHtml; $('lb').innerHTML = lbHtml; }
+  }
+
+  var GP = ['how', 'charms', 'ranks', 'rules'];
+  function guideSub() {
+    var h = location.hash.replace(/^#/, ''), i = h.indexOf('-'), sub = i > 0 ? h.slice(i + 1) : 'how';
+    return GP.indexOf(sub) >= 0 ? sub : 'how';
+  }
+  function renderGuide() {
+    if (!rankListBuilt) {
+      rankListBuilt = true;
+      $('rank-list').innerHTML = RANKS.map(function (k, i) {
+        return '<div class="rtile">' + avatar(i) + '<b>' + k.name + '</b><span>' + (k.sets === 0 ? 'Start' : k.sets + (k.sets === 1 ? ' full set' : ' full sets')) + '</span></div>';
+      }).join('');
+      $('guide').innerHTML = CHARMS.map(function (c) {
+        return '<div class="citem"><div class="sock sm">' + charmSvg(c.k) + '</div><div><b style="color:' + c.tint + '">' + c.name + '</b><span>' + c.power + '</span></div></div>';
+      }).join('');
+    }
+    var sub = guideSub();
+    GP.forEach(function (k) { $('gp-' + k).hidden = k !== sub; });
+    Array.prototype.forEach.call($('g-tabs').children, function (t) { t.setAttribute('aria-selected', t.getAttribute('data-g') === sub ? 'true' : 'false'); });
+  }
+
+  function renderGate() {
+    $('gate-round').textContent = CUR_LONG;
+    if (S.pend && S.ready && !S.nodb && !S.err && !person(S.pend)) { S.pend = null; savePend(null); S.declined = true; }
+    var list = S.people.filter(eligible);
+    var pp = S.pend ? person(S.pend) : null;
+    var sig = [S.ready, S.nodb, S.err, S.people.length, list.map(function (p) { return p.id + p.name; }).join('|'), S.pend, pp && pp.status, S.declined, S.joinMsg].join('#');
+    if (sig === gateSig) return;
+    gateSig = sig;
+    var copy = $('gate-copy'), body = $('gate-body');
+    body.innerHTML = '';
+    if (S.nodb) { copy.textContent = 'Charm Master could not reach its saved data. Check your connection and refresh the page. If it keeps happening, tell the person who runs Charm Master.'; return; }
+    if (S.err) { copy.textContent = 'The roster could not be loaded. Reload the page to try again.'; return; }
+    if (!S.ready) { copy.textContent = 'Gathering the roster…'; return; }
+    if (!S.people.length) {
+      copy.textContent = 'No one is on the roster yet. Enter your name to start it. You will be its first admin.';
+      body.innerHTML = '<form id="boot-form" class="inline-form" autocomplete="off"><label class="sr" for="boot-name">Your name</label>' +
+        '<input id="boot-name" class="field" type="text" maxlength="40" placeholder="Your name" required><button type="submit" class="btn">Begin</button></form>';
+      return;
+    }
+    if (pp && pp.status === 'pending') {
+      copy.textContent = 'Your request is in, ' + pp.name.split(' ')[0] + '. An admin needs to approve it. This page opens your profile as soon as they do.';
+      body.innerHTML = '<div class="tnote ok">Waiting for approval as <strong>' + esc(pp.name) + '</strong></div><div><button type="button" class="btn2" data-act="join-cancel">Cancel request</button></div>';
+      return;
+    }
+    copy.textContent = list.length ? 'Pick your name to open your profile.' : 'Nobody is on the roster for ' + CUR_LONG + ' yet. Request to join and an admin will approve you.';
+    body.innerHTML = (list.length ? '<div class="pick">' + list.map(function (p) {
+      return '<button type="button" data-pick="' + esc(p.id) + '"><span class="ravatar" aria-hidden="true">' + esc(initials(p.name)) + '</span><span>' + esc(p.name) + '</span></button>';
+    }).join('') + '</div>' : '') +
+      (S.declined ? '<div class="warn">Your last request was not approved. Ask an admin if you think that was a mistake.</div>' : '') +
+      '<div class="rule"></div><div class="eyebrow" style="font-size:13px">' + (list.length ? 'Not listed?' : 'New here?') + '</div>' +
+      '<form id="join-form" class="inline-form" autocomplete="off"><label class="sr" for="join-name">Your name</label>' +
+      '<input id="join-name" class="field" type="text" maxlength="40" placeholder="Your name" required><button type="submit" class="btn2">Request to join</button></form>' +
+      '<div class="msg bad" role="alert">' + esc(S.joinMsg) + '</div>';
+  }
+
+  function renderCard(m) {
+    var HAVE = {}, types = 0, total = 0, spare = 0;
+    CHARMS.forEach(function (c) {
+      var n = Math.max(0, Math.floor(+S.counts[c.k] || 0));
+      HAVE[c.k] = n;
+      if (n > 0) types++;
+      total += n;
+      if (n > 1) spare += n - 1;
+    });
+    $('hero-title').textContent = m.name.split(' ')[0] + "'s Profile";
+    $('round-eyebrow').textContent = 'Round · ' + CUR_LONG;
+    var rk = rankFor(S.mySets), nx = nextRank(S.mySets);
+    $('hero-copy').textContent = (types === 0 && S.mySets === 0)
+      ? 'No charms yet this round. One arrives when a teammate recognises something you did well.'
+      : types + ' of 8 charms toward your next set. ' + (nx ? 'Complete it to rank up to ' + nx.name + '.' : 'You are a Charm Master. Keep collecting.');
+    $('rank-name').textContent = rk.name;
+    var medal = $('medal'), mk = 'r' + rankIdx(S.mySets);
+    if (medal.getAttribute('data-k') !== mk) { medal.setAttribute('data-k', mk); medal.innerHTML = avatar(rankIdx(S.mySets)); medal.classList.add('has-av'); }
+    $('rank-desc').textContent = S.mySets + (S.mySets === 1 ? ' full set' : ' full sets') + ' this round. ' + (nx ? 'Next rank: ' + nx.name + ' at ' + nx.sets + (nx.sets === 1 ? ' set.' : ' sets.') : 'The top rank.');
+    $('ladder').innerHTML = RANKS.map(function (k) {
+      return '<span class="rchip' + (S.mySets >= k.sets ? ' on' : '') + (k.name === rk.name ? ' now' : '') + '">' + k.name + '</span>';
+    }).join('');
+    $('count').textContent = types + ' / 8';
+    $('stat-total').textContent = total;
+    $('stat-spare').textContent = spare;
+    var segs = $('segs');
+    segs.setAttribute('aria-label', types + ' of 8 charms collected');
+    segs.innerHTML = CHARMS.map(function (c) { return '<div class="seg' + (HAVE[c.k] ? ' on' : '') + '"></div>'; }).join('');
+    $('grid').innerHTML = CHARMS.map(function (c, i) {
+      var n = HAVE[c.k], has = n > 0;
+      var state = n > 1 ? '<div class="state spare">' + (n - 1) + ' spare to trade</div>'
+        : n === 1 ? '<div class="state eq">Equipped</div>'
+        : '<div class="state none">Not yet collected</div>';
+      return '<article class="card ' + (has ? 'has' : 'miss') + '" style="--glow:' + c.glow + '">' +
+        (n > 1 ? '<div class="badge">×' + n + '</div>' : '') +
+        '<div class="socket"><svg class="charm" style="animation-delay:' + (i * 0.35).toFixed(2) + 's" aria-hidden="true"><use href="#c-' + c.k + '"/></svg></div>' +
+        '<div class="cname" style="color:' + c.tint + '">' + c.name.replace(' Charm', '') + '</div>' +
+        '<div class="use">' + c.power + '</div>' + state + '</article>';
+    }).join('');
+    $('minis').innerHTML = CHARMS.map(function (c) {
+      return '<svg class="mini' + (HAVE[c.k] ? '' : ' miss') + '" aria-hidden="true"><use href="#c-' + c.k + '"/></svg>';
+    }).join('');
+    renderDeeds(m);
+  }
+
+  function renderAdmin() {
+    $('col-a').textContent = CUR_SHORT;
+    $('col-b').textContent = NEXT_SHORT;
+    var list = $('roster-list');
+    var reqs = pendingList();
+    $('req-box').innerHTML = reqs.length ? '<div class="reqs"><div class="eyebrow" style="font-size:13px">Join requests · ' + reqs.length + '</div>' + reqs.map(function (p) {
+      return '<div class="rrow req"><div class="rwho"><span class="ravatar" aria-hidden="true">' + esc(initials(p.name)) + '</span><div class="rname"><b>' + esc(p.name) + '</b><span class="muted" style="font-size:13px">Asked ' + esc(fmtDay(p.requestedAt) || 'recently') + '</span></div></div>' +
+        '<div class="reqbtns"><button type="button" class="btn" data-act="approve" data-pid="' + esc(p.id) + '">Approve</button><button type="button" class="btn2" data-act="decline" data-pid="' + esc(p.id) + '">Decline</button></div></div>';
+    }).join('') + '</div>' : '';
+    list.innerHTML = S.people.filter(function (p) { return p.status !== 'pending'; }).map(function (p) {
+      var admin = p.role === 'admin';
+      function sw(r, label) {
+        return '<div class="rcell"><button type="button" class="sw" role="switch" aria-checked="' + inRound(p, r) + '" aria-label="' + esc(p.name) + ' in the ' + label + ' round" data-act="tog" data-pid="' + esc(p.id) + '" data-round="' + r + '"></button></div>';
+      }
+      return '<div class="rrow"><div class="rwho"><span class="ravatar" aria-hidden="true">' + esc(initials(p.name)) + '</span>' +
+        '<div class="rname"><b>' + esc(p.name) + '</b><span style="display:flex; flex-wrap:wrap; align-items:center; gap:8px"><span class="chip' + (admin ? ' admin' : '') + '" style="display:inline-flex; align-items:center; cursor:default">' + (admin ? 'Admin' : 'Member') + '</span>' +
+        '<button type="button" class="btn2" style="min-height:32px; padding:0 12px; font-size:12px" data-act="role" data-pid="' + esc(p.id) + '" aria-label="Make ' + esc(p.name) + (admin ? ' a member' : ' an admin') + '">' + (admin ? 'Make member' : 'Make admin') + '</button></span></div></div>' +
+        sw(CUR, CUR_NAME) + sw(NEXT, NEXT_NAME) + '</div>';
+    }).join('');
+    renderWipe();
+  }
+
+  var wipeSig = '';
+  function renderWipe() {
+    $('wipe-round').textContent = CUR_LONG;
+    var W = S.wipe, nGrants = S.grants.length, nSets = 0, nCharms = 0, nTrades = S.trades.length;
+    Object.keys(S.cards).forEach(function (id) {
+      var e = S.cards[id]; nSets += e.sets || 0;
+      CHARMS.forEach(function (c) { nCharms += cnt(e.counts, c.k); });
+    });
+    var sig = [W.step, W.busy, W.msg, W.bad, nGrants, nSets, nCharms, nTrades].join('#');
+    if (sig === wipeSig) return;
+    wipeSig = sig;
+    var body = '';
+    if (W.step === 0) {
+      body = '<div><button type="button" class="btn danger" data-act="wipe-ask">Wipe ' + esc(CUR_NAME) + '…</button></div>';
+    } else {
+      body = '<div class="tnote" style="flex-direction:column; align-items:flex-start"><strong style="color:#ffb27a">Are you sure?</strong>' +
+        '<span>This will permanently remove ' + nGrants + (nGrants === 1 ? ' granted charm' : ' granted charms') + ', ' + nSets + (nSets === 1 ? ' completed set' : ' completed sets') +
+        ' and ' + nTrades + (nTrades === 1 ? ' swap offer' : ' swap offers') + ' from ' + esc(CUR_LONG) + '. Everyone goes back to Wanderer with an empty bracelet.</span></div>' +
+        '<div style="display:flex; flex-wrap:wrap; gap:12px"><button type="button" class="btn danger" data-act="wipe-go"' + (W.busy ? ' disabled' : '') + '>' + (W.busy ? 'Wiping…' : 'Yes, wipe ' + esc(CUR_NAME)) + '</button>' +
+        '<button type="button" class="btn2" data-act="wipe-cancel"' + (W.busy ? ' disabled' : '') + '>Keep everything</button></div>';
+    }
+    $('wipe-body').innerHTML = body;
+    var el = $('wipe-msg'); el.textContent = W.msg; el.className = 'msg' + (W.bad ? ' bad' : '');
+  }
+  // Removes this round's bracelets, grants and trades. People and the roster are not touched.
+  function wipeRound() {
+    var cols = ['cards', 'grants', 'trades'];
+    return Promise.all(cols.map(function (c) {
+      return S.db.collection(c).where('roundId', '==', CUR).get().then(function (snap) { return snap.docs.map(function (d) { return c + '/' + d.id; }); });
+    })).then(function (lists) {
+      var paths = [].concat.apply([], lists), n = paths.length;
+      function chunk(i) {
+        if (i >= paths.length) return Promise.resolve(n);
+        return Promise.all(paths.slice(i, i + 10).map(function (x) { return S.db.doc(x).delete(); })).then(function () { return chunk(i + 10); });
+      }
+      return chunk(0);
+    });
+  }
+
+  // ---- trading ----
+  var TRADE_MS = 3 * 24 * 3600 * 1000;
+  function cnt(counts, k) { return Math.max(0, Math.floor(+(counts && counts[k]) || 0)); }
+  function spareKeys(counts) { return CHARMS.filter(function (c) { return cnt(counts, c.k) >= 2; }).map(function (c) { return c.k; }); }
+  function cardCounts(id) { return (S.cards[id] || {}).counts || {}; }
+  function isOpen(t) { return t.status === 'open' && Date.parse(t.expiresAt) > Date.now(); }
+  function canTake(t, id) { return t.fromId !== id && cnt(S.counts, t.want) >= 2; }
+  function useful(t, id) { return canTake(t, id) && cnt(S.counts, t.give) === 0; }
+  function incoming(id) { return S.trades.filter(function (t) { return isOpen(t) && useful(t, id); }); }
+  function outgoing(id) { return S.trades.filter(function (t) { return t.fromId === id && isOpen(t); }); }
+  function left(t) {
+    var h = (Date.parse(t.expiresAt) - Date.now()) / 3600000;
+    if (h >= 24) { var d = Math.ceil(h / 24); return d + (d === 1 ? ' day left' : ' days left'); }
+    if (h >= 1) { var n = Math.floor(h); return n + (n === 1 ? ' hour left' : ' hours left'); }
+    return 'under an hour left';
+  }
+  function nameOf(id) { var p = person(id); return p ? p.name : 'A teammate'; }
+  function charmSvg(k) { return '<svg aria-hidden="true"><use href="#c-' + k + '"/></svg>'; }
+
+  function lease(ref, holder, ms) {
+    function go(i) {
+      return ref.acquire({ holder: holder, ttlMs: ms }).then(function (r) {
+        if (r.acquired) return true;
+        if (i >= 7) throw { code: 'busy' };
+        return sleep(500 + Math.random() * 500).then(function () { return go(i + 1); });
+      }, function () { return false; });
+    }
+    return go(0);
+  }
+  function readCard(s) {
+    var d = s.exists ? (s.data() || {}) : null;
+    if (!d) return null;
+    var cur = (d.counts && typeof d.counts === 'object') ? d.counts : {}, counts = {}, orig = {};
+    CHARMS.forEach(function (c) { counts[c.k] = cnt(cur, c.k); orig[c.k] = counts[c.k]; });
+    var sets = Math.max(0, Math.floor(+d.sets || 0));
+    return { counts: counts, orig: orig, sets: sets, origSets: sets, done: 0 };
+  }
+  function settle(x) {
+    while (CHARMS.every(function (c) { return x.counts[c.k] >= 1; })) {
+      CHARMS.forEach(function (c) { x.counts[c.k] -= 1; });
+      x.sets++; x.done++;
+    }
+  }
+  function terminal(id, status, meId, party) {
+    var ref = S.db.doc('trades/' + id);
+    return lease(ref, meId, 5000).then(function () { return ref.get(); }).then(function (s) {
+      var d = s.exists ? (s.data() || {}) : null;
+      if (!d || d.status !== 'open') throw { code: 'gone' };
+      if (String(d[party]) !== meId) throw { code: 'notyou' };
+      return ref.update({ status: status, resolvedAt: new Date().toISOString() });
+    });
+  }
+  // Both cards change, so: lock the offer and both cards, re-check that each side still has the spare,
+  // close the offer first so it can never be taken twice, then write both cards (undoing the first if the second fails).
+  function acceptTrade(id, meId) {
+    var tref = S.db.doc('trades/' + id), t, refs, A, B;
+    return lease(tref, meId, 8000).then(function () { return tref.get(); }).then(function (s) {
+      var d = s.exists ? (s.data() || {}) : null;
+      if (!d || d.status !== 'open') throw { code: 'gone' };
+      t = { fromId: String(d.fromId || ''), give: d.give, want: d.want, expiresAt: String(d.expiresAt || '') };
+      if (t.fromId === meId) throw { code: 'own' };
+      if (!(Date.parse(t.expiresAt) > Date.now())) throw { code: 'expired' };
+      if (!t.fromId || !charmByKey(t.give) || !charmByKey(t.want) || t.give === t.want) throw { code: 'gone' };
+      var ids = [t.fromId, meId].sort();
+      refs = {}; ids.forEach(function (x) { refs[x] = S.db.doc('cards/' + CUR + '__' + x); });
+      return lease(refs[ids[0]], meId, 5000).then(function () { return lease(refs[ids[1]], meId, 5000); });
+    }).then(function () { return Promise.all([refs[t.fromId].get(), refs[meId].get()]); }).then(function (r) {
+      A = readCard(r[0]); B = readCard(r[1]);
+      if (!B || B.counts[t.want] < 2) throw { code: 'youspare' };
+      if (!A || A.counts[t.give] < 2) {
+        return tref.update({ status: 'void', resolvedAt: new Date().toISOString() }).then(function () { throw { code: 'nospare' }; }, function () { throw { code: 'nospare' }; });
+      }
+      A.counts[t.give] -= 1; A.counts[t.want] += 1;
+      B.counts[t.want] -= 1; B.counts[t.give] += 1;
+      settle(A); settle(B);
+      return tref.update({ status: 'done', toId: meId, resolvedAt: new Date().toISOString() });
+    }).then(function () {
+      function body(who, x) { return { roundId: CUR, personId: who, counts: x.counts, sets: x.sets }; }
+      return refs[t.fromId].update(body(t.fromId, A)).then(function () {
+        return refs[meId].update(body(meId, B)).catch(function () {
+          return refs[t.fromId].update({ counts: A.orig, sets: A.origSets }).then(function () {
+            return tref.update({ status: 'void', resolvedAt: new Date().toISOString() });
+          }).then(function () { throw { code: 'save' }; }, function () { throw { code: 'partial' }; });
+        });
+      }, function () {
+        return tref.update({ status: 'void', resolvedAt: new Date().toISOString() }).then(function () { throw { code: 'save' }; }, function () { throw { code: 'save' }; });
+      });
+    }).then(function () { return { got: t.give, gave: t.want, from: t.fromId, done: B.done, sets: B.sets }; });
+  }
+  var TERR = {
+    gone: 'That offer is no longer open.',
+    own: 'You cannot take your own offer.',
+    expired: 'That offer has expired.',
+    youspare: 'You no longer have a spare of the charm they want, so you cannot take this offer.',
+    nospare: 'The person who posted it no longer has that spare, so the offer was closed.',
+    notyou: 'That offer is not yours to change.',
+    busy: 'Those charms are being updated by someone else. Try again in a moment.',
+    save: 'The swap could not be saved, so nothing changed. Try again.',
+    partial: 'The swap failed part-way. Ask an admin to check both bracelets.'
+  };
+
+  var tradeSig = '';
+  function short(k) { return charmByKey(k).name.replace(' Charm', ''); }
+  function renderTrade(m) {
+    $('trade-eyebrow').textContent = 'Round · ' + CUR_LONG;
+    var T_ = S.t, mine = S.counts;
+    var mySp = spareKeys(mine);
+    var missing = CHARMS.filter(function (c) { return cnt(mine, c.k) === 0; }).map(function (c) { return c.k; });
+    var outs = outgoing(m.id);
+    function offered(k) { return outs.filter(function (t) { return t.give === k; }).length; }
+    function free(k) { return cnt(mine, k) - 1 - offered(k); }
+    var giveable = mySp.filter(function (k) { return free(k) > 0; });
+    if (giveable.indexOf(T_.give) < 0) T_.give = '';
+    if (missing.indexOf(T_.want) < 0) T_.want = '';
+    var inRd = {}; S.people.forEach(function (p) { if (inRound(p, CUR)) inRd[p.id] = true; });
+    var others = S.trades.filter(function (t) { return isOpen(t) && t.fromId !== m.id && inRd[t.fromId]; }).sort(function (a, b) {
+      return (useful(b, m.id) ? 2 : 0) + (canTake(b, m.id) ? 1 : 0) - (useful(a, m.id) ? 2 : 0) - (canTake(a, m.id) ? 1 : 0);
+    });
+    var forYou = others.filter(function (t) { return useful(t, m.id); });
+    var sig = [m.id, T_.open, T_.tab, T_.filter, T_.shown, T_.give, T_.want, T_.busy, T_.busyId, T_.msg, T_.bad, T_.notice && T_.notice.text, JSON.stringify(mine),
+      S.people.map(function (p) { return p.id + p.name + (inRd[p.id] ? 1 : 0); }).join('|'),
+      S.trades.map(function (t) { return t.id + t.status + t.expiresAt; }).join(','), Math.floor(Date.now() / 60000)].join('#');
+    if (sig === tradeSig) return;
+    tradeSig = sig;
+
+    // --- post bar (form opens beneath it) ---
+    var same = T_.give && T_.want && T_.give === T_.want;
+    var ready = T_.give && T_.want && !same && !T_.busy;
+    function pickRow(list, side, sel, sub, off) {
+      return '<div class="pickrow">' + list.map(function (k) {
+        return '<button type="button" class="pk" data-side="' + side + '" data-k="' + k + '" aria-pressed="' + (sel === k) + '"' + (off(k) ? ' disabled' : '') + '>' + charmSvg(k) + short(k) + '<small>' + sub(k) + '</small></button>';
+      }).join('') + '</div>';
+    }
+    function sock(k, label, hint) {
+      return '<div class="side"><div class="eyebrow" style="font-size:12px; color:var(--muted)">' + label + '</div>' +
+        (k ? '<div class="sock">' + charmSvg(k) + '</div><div style="font-family:var(--display); font-weight:700; font-size:18px; color:' + charmByKey(k).tint + '">' + charmByKey(k).name + '</div>'
+           : '<div class="sock empty"><span>?</span></div><div class="muted" style="font-size:14px">' + hint + '</div>') + '</div>';
+    }
+    var arrows = '<svg width="64" height="64" viewBox="0 0 76 76" role="img" aria-label="swapped for"><circle cx="38" cy="38" r="34" fill="rgba(232,195,106,0.1)" stroke="#e8c36a" stroke-width="2.5"/><path d="M20 29 H54 M47 21 L56 29 L47 37" fill="none" stroke="#ffd86b" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/><path d="M56 47 H22 M29 39 L20 47 L29 55" fill="none" stroke="#6ee8d8" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+    var hint = mySp.length ? (giveable.length ? 'You have ' + giveable.length + (giveable.length === 1 ? ' spare' : ' kinds of spare') + ' ready to offer.' : 'All your spares are already on the market.') : 'You have no spares yet. A spare is a second copy of a charm.';
+    var bar = '<div class="thead"><div><h2 class="gtext" style="font-size:26px">Post an Offer</h2><div class="muted" style="font-size:14px; margin-top:4px">' + hint + '</div></div>' +
+      '<button type="button" class="btn' + (T_.open ? '2' : '') + '" data-act="t-toggle" aria-expanded="' + T_.open + '">' + (T_.open ? 'Close' : 'Post an offer') + '</button></div>';
+    if (T_.open) {
+      bar += '<div class="swap">' + sock(T_.give, 'You offer', 'Pick one of your spares') + arrows + sock(T_.want, 'You want', 'Pick a charm you are missing') + '</div>' +
+        '<div style="display:flex; flex-direction:column; gap:10px"><div class="eyebrow" style="font-size:13px">Your spares to offer</div>' +
+        (mySp.length ? pickRow(mySp, 'give', T_.give, function (k) { var n = free(k); return n > 0 ? n + (n === 1 ? ' spare' : ' spares') : 'all offered'; }, function (k) { return free(k) <= 0; })
+          : '<p class="muted" style="margin:0; font-size:14px; line-height:1.5">Nothing to offer yet. Once you hold a second copy of a charm it will appear here.</p>') + '</div>' +
+        '<div style="display:flex; flex-direction:column; gap:10px"><div class="eyebrow" style="font-size:13px">The charm you are missing</div>' +
+        (missing.length ? pickRow(missing, 'want', T_.want, function () { return 'missing'; }, function () { return false; })
+          : '<p class="muted" style="margin:0; font-size:14px; line-height:1.5">You hold at least one of every charm, so there is nothing you need.</p>') + '</div>' +
+        '<div style="display:flex; flex-wrap:wrap; align-items:center; gap:16px"><button type="button" class="btn" data-act="t-send"' + (ready ? '' : ' disabled') + '>' + (T_.busy ? 'Posting…' : 'Post to the market') + '</button>' +
+        '<span class="muted small">Expires ' + fmtDay(new Date(Date.now() + TRADE_MS).toISOString()) + ' if nobody takes it</span></div>';
+    }
+    bar += '<div class="msg' + (T_.bad ? ' bad' : '') + '" role="status" aria-live="polite">' + esc(T_.msg) + '</div>';
+    $('t-bar').innerHTML = bar;
+
+    // --- market ---
+    var tabs = [['you', 'For you', forYou.length], ['all', 'All offers', others.length], ['mine', 'Mine', outs.length]];
+    var list = T_.tab === 'all' ? others : T_.tab === 'mine' ? outs : forYou;
+    if (T_.filter) list = list.filter(function (t) { return t.give === T_.filter; });
+    var total = list.length, shown = list.slice(0, T_.shown);
+    var note = T_.notice ? '<div class="tnote ok">' + (T_.notice.up >= 0 ? avatar(T_.notice.up) : '') + '<span>' + esc(T_.notice.text) + '</span></div>' : '';
+    var h = '<div class="thead"><h2 class="gtext" style="font-size:32px">Open Market</h2></div>' + note +
+      '<div class="ttabs" role="tablist">' + tabs.map(function (t) {
+        return '<button type="button" role="tab" class="ttab" data-tab="' + t[0] + '" aria-selected="' + (T_.tab === t[0]) + '">' + t[1] + '<span class="n">' + t[2] + '</span></button>';
+      }).join('') + '</div>' +
+      '<div class="tfilter"><span class="eyebrow" style="font-size:12px; color:var(--muted)">Offers giving</span>' + CHARMS.map(function (c) {
+        return '<button type="button" class="fchip" data-f="' + c.k + '" aria-pressed="' + (T_.filter === c.k) + '" aria-label="' + c.name + '" title="' + c.name + '">' + charmSvg(c.k) + '</button>';
+      }).join('') + (T_.filter ? '<button type="button" class="linkbtn" data-f="">Clear</button>' : '') + '</div>';
+    if (shown.length) {
+      h += '<div class="mgrid">' + shown.map(function (t) {
+        if (T_.tab === 'mine') {
+          return '<div class="offer"><div class="pair"><div class="sock sm">' + charmSvg(t.give) + '</div><span class="for">for</span><div class="sock sm">' + charmSvg(t.want) + '</div></div>' +
+            '<div class="muted" style="font-size:14px">' + short(t.give) + ' for ' + short(t.want) + ' · ' + left(t) + '</div>' +
+            '<div class="btns"><button type="button" class="btn2" data-act="t-cancel" data-id="' + esc(t.id) + '"' + (T_.busyId === t.id ? ' disabled' : '') + '>Cancel offer</button></div></div>';
+        }
+        var take = canTake(t, m.id), use = useful(t, m.id), busy = T_.busyId === t.id;
+        return '<div class="offer' + (use ? ' in' : '') + '">' +
+          '<div style="line-height:1.4"><strong>' + esc(nameOf(t.fromId)) + '</strong> is offering' + (use ? ' <span class="tag">You are missing this</span>' : '') + '</div>' +
+          '<div class="pair"><div class="sock sm">' + charmSvg(t.give) + '</div><span class="for">for your</span><div class="sock sm">' + charmSvg(t.want) + '</div></div>' +
+          '<div class="muted" style="font-size:14px">You get ' + short(t.give) + ', they get ' + short(t.want) + ' · ' + left(t) + '</div>' +
+          (take ? '' : '<div class="warn">You need a spare ' + charmByKey(t.want).name + ' to take this.</div>') +
+          '<div class="btns"><button type="button" class="btn" data-act="t-accept" data-id="' + esc(t.id) + '"' + ((busy || !take) ? ' disabled' : '') + '>' + (busy ? 'Working…' : 'Take this deal') + '</button></div></div>';
+      }).join('') + '</div>';
+      if (total > shown.length) h += '<div style="text-align:center"><button type="button" class="btn2" data-act="t-more">Show more (' + (total - shown.length) + ' more)</button></div>';
+    } else if (T_.filter) {
+      h += '<p class="muted" style="margin:0; font-size:15px; line-height:1.5">No offers giving ' + short(T_.filter) + ' here. <button type="button" class="linkbtn" data-f="">Clear the filter</button></p>';
+    } else if (T_.tab === 'you') {
+      h += '<p class="muted" style="margin:0; font-size:15px; line-height:1.5">Nothing for you right now. This tab shows deals that give you a charm you are missing, for a spare you hold. ' + (others.length ? '<button type="button" class="linkbtn" data-tab="all">See all ' + others.length + ' offers</button>' : 'The market is quiet, so post an offer above.') + '</p>';
+    } else if (T_.tab === 'mine') {
+      h += '<p class="muted" style="margin:0; font-size:15px; line-height:1.5">You have nothing on the market.</p>';
+    } else {
+      h += '<p class="muted" style="margin:0; font-size:15px; line-height:1.5">The market is quiet. Post an offer above and teammates will see it here.</p>';
+    }
+    if (T_.tab === 'mine') {
+      h += S.trades.filter(function (t) { return t.fromId === m.id && t.status === 'void' && Date.now() - Date.parse(t.resolvedAt || t.at) < TRADE_MS; }).slice(0, 3).map(function (t) {
+        return '<p class="muted" style="margin:0; font-size:13px; line-height:1.4">Your ' + short(t.give) + ' for ' + short(t.want) + ' offer was closed because a spare was no longer available.</p>';
+      }).join('');
+    }
+    $('t-market').innerHTML = h;
+
+    // --- recent swaps ---
+    var dones = S.trades.filter(function (t) { return t.status === 'done' && t.toId; }).slice(0, 8);
+    $('t-hist').innerHTML = '<h2 class="gtext" style="font-size:26px">Recent Swaps</h2>' +
+      (dones.length ? dones.map(function (t) {
+        return '<div class="swaprow">' + charmSvg(t.give) + '<span><strong>' + esc(nameOf(t.fromId)) + '</strong> gave ' + short(t.give) + ' to <strong>' + esc(nameOf(t.toId)) + '</strong> for ' + short(t.want) + '</span><time>' + fmtDay(t.resolvedAt || t.at) + '</time></div>';
+      }).join('') : '<p class="muted" style="margin:0; font-size:14px">No swaps yet this round.</p>');
+  }
+
+  // ---- events ----
+  function save(promise) {
+    return promise.catch(function (e) {
+      say(e && e.code === 'quota_exceeded' ? 'The database is full, so that change was not saved.' : 'That change could not be saved. Check your connection and try again.', true);
+    });
+  }
+
+  // ---- Sound: everything is synthesised in the browser (no audio files). On by default; remembered per device.
+  var Snd = (function () {
+    var KEY = 'charm-master.sound', BAR = 1.14, E8 = 0.19;
+    var L = { ctx: null, bus: null, on: true, sess: null, dr: null, timer: 0, nextT: 0, nextBar: 0, melodyAt: 0, intro: null, tok: 0, vis: 0 };
+    try { L.on = localStorage.getItem(KEY) !== 'off'; } catch (e) {}
+    function hz(m) { return 440 * Math.pow(2, (m - 69) / 12); }
+    function nbuf(ctx) {
+      if (!ctx._nb) { var n = Math.floor(ctx.sampleRate * 1.5), b = ctx.createBuffer(1, n, ctx.sampleRate), d = b.getChannelData(0); for (var i = 0; i < n; i++) d[i] = Math.random() * 2 - 1; ctx._nb = b; }
+      return ctx._nb;
+    }
+    function makeBus(ctx) {
+      var master = ctx.createGain(); master.gain.value = 0.9;
+      var comp = ctx.createDynamicsCompressor(); comp.threshold.value = -16; comp.ratio.value = 4; comp.attack.value = 0.01; comp.release.value = 0.25;
+      master.connect(comp); comp.connect(ctx.destination);
+      var music = ctx.createGain(); music.gain.value = 0.5; music.connect(master);
+      var sfx = ctx.createGain(); sfx.gain.value = 0.9; sfx.connect(master);
+      return { master: master, music: music, sfx: sfx };
+    }
+    function env(g, t, a, peak, d) { g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(peak, t + a); g.gain.exponentialRampToValueAtTime(0.0001, t + a + d); }
+    function pluck(ctx, dest, f, t, dur, vel) {
+      var o = ctx.createOscillator(), o2 = ctx.createOscillator(), g2 = ctx.createGain(), lp = ctx.createBiquadFilter(), g = ctx.createGain();
+      o.type = 'triangle'; o.frequency.value = f; o2.type = 'sawtooth'; o2.frequency.value = f * 1.004; g2.gain.value = 0.22;
+      lp.type = 'lowpass'; lp.frequency.setValueAtTime(3400, t); lp.frequency.exponentialRampToValueAtTime(650, t + 0.45);
+      env(g, t, 0.006, vel, dur);
+      o.connect(lp); o2.connect(g2); g2.connect(lp); lp.connect(g); g.connect(dest);
+      o.start(t); o2.start(t); o.stop(t + dur + 0.1); o2.stop(t + dur + 0.1);
+    }
+    function flute(ctx, dest, f, t, dur, vel) {
+      var o = ctx.createOscillator(), o2 = ctx.createOscillator(), g2 = ctx.createGain(), lfo = ctx.createOscillator(), lg = ctx.createGain(), g = ctx.createGain();
+      o.type = 'sine'; o.frequency.value = f; o2.type = 'sine'; o2.frequency.value = f * 2; g2.gain.value = 0.14;
+      lfo.frequency.value = 5.2; lg.gain.setValueAtTime(0, t); lg.gain.linearRampToValueAtTime(f * 0.007, t + Math.min(0.3, dur));
+      lfo.connect(lg); lg.connect(o.frequency);
+      g.gain.setValueAtTime(0.0001, t); g.gain.linearRampToValueAtTime(vel, t + 0.05); g.gain.setValueAtTime(vel, t + Math.max(0.06, dur - 0.08)); g.gain.linearRampToValueAtTime(0.0001, t + dur);
+      o.connect(g); o2.connect(g2); g2.connect(g); g.connect(dest);
+      var nz = ctx.createBufferSource(), bp = ctx.createBiquadFilter(), ng = ctx.createGain();
+      nz.buffer = nbuf(ctx); bp.type = 'bandpass'; bp.frequency.value = 3200; bp.Q.value = 1.2; env(ng, t, 0.03, vel * 0.06, Math.min(0.25, dur));
+      nz.connect(bp); bp.connect(ng); ng.connect(dest); nz.start(t, 0, dur + 0.1); nz.stop(t + dur + 0.1);
+      o.start(t); o2.start(t); lfo.start(t); o.stop(t + dur + 0.05); o2.stop(t + dur + 0.05); lfo.stop(t + dur + 0.05);
+    }
+    function drum(ctx, dest, t, vel) {
+      var o = ctx.createOscillator(), g = ctx.createGain();
+      o.type = 'sine'; o.frequency.setValueAtTime(150, t); o.frequency.exponentialRampToValueAtTime(58, t + 0.14);
+      env(g, t, 0.004, vel, 0.28); o.connect(g); g.connect(dest); o.start(t); o.stop(t + 0.4);
+    }
+    function jingle(ctx, dest, t, vel) {
+      var s = ctx.createBufferSource(), hp = ctx.createBiquadFilter(), g = ctx.createGain();
+      s.buffer = nbuf(ctx); hp.type = 'highpass'; hp.frequency.value = 6500; env(g, t, 0.002, vel, 0.07);
+      s.connect(hp); hp.connect(g); g.connect(dest); s.start(t, Math.random(), 0.2); s.stop(t + 0.15);
+    }
+    function bell(ctx, dest, f, t, vel, dec) {
+      var P = [[1, 1], [2.41, 0.45], [3.97, 0.22], [5.93, 0.1]];
+      for (var i = 0; i < P.length; i++) {
+        var o = ctx.createOscillator(), g = ctx.createGain();
+        o.type = 'sine'; o.frequency.value = f * P[i][0]; env(g, t, 0.004, vel * P[i][1], dec / (1 + i * 0.6));
+        o.connect(g); g.connect(dest); o.start(t); o.stop(t + dec + 0.1);
+      }
+    }
+    function whoosh(ctx, dest, t, dur, vel) {
+      var s = ctx.createBufferSource(), bp = ctx.createBiquadFilter(), g = ctx.createGain();
+      s.buffer = nbuf(ctx); bp.type = 'bandpass'; bp.Q.value = 2.2; bp.frequency.setValueAtTime(4200, t); bp.frequency.exponentialRampToValueAtTime(500, t + dur);
+      g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(vel, t + dur * 0.35); g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+      s.connect(bp); bp.connect(g); g.connect(dest); s.start(t, 0, dur + 0.1); s.stop(t + dur + 0.1);
+    }
+    function boom(ctx, dest, t) {
+      var o = ctx.createOscillator(), g = ctx.createGain();
+      o.type = 'sine'; o.frequency.setValueAtTime(80, t); o.frequency.exponentialRampToValueAtTime(34, t + 1.3);
+      env(g, t, 0.01, 0.9, 1.5); o.connect(g); g.connect(dest); o.start(t); o.stop(t + 1.7);
+      var s = ctx.createBufferSource(), lp = ctx.createBiquadFilter(), ng = ctx.createGain();
+      s.buffer = nbuf(ctx); lp.type = 'lowpass'; lp.frequency.value = 260; env(ng, t, 0.005, 0.5, 0.6); s.connect(lp); lp.connect(ng); ng.connect(dest); s.start(t, 0, 0.8); s.stop(t + 0.8);
+    }
+    function shimmer(ctx, dest, t) {
+      var s = ctx.createBufferSource(), hp = ctx.createBiquadFilter(), g = ctx.createGain();
+      s.buffer = nbuf(ctx); hp.type = 'highpass'; hp.frequency.value = 5500;
+      g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(0.18, t + 0.7); g.gain.exponentialRampToValueAtTime(0.0001, t + 2.4);
+      s.connect(hp); hp.connect(g); g.connect(dest); s.start(t, 0, 2.5); s.stop(t + 2.5);
+    }
+    function drone(ctx, dest, t) {
+      var g = ctx.createGain(), lp = ctx.createBiquadFilter(), os = [];
+      lp.type = 'lowpass'; lp.frequency.value = 360; g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(0.06, t + 2.5);
+      [[73.42, 0], [110, 0], [73.42, 6], [146.83, -4]].forEach(function (p) {
+        var o = ctx.createOscillator(); o.type = 'sawtooth'; o.frequency.value = p[0]; o.detune.value = p[1]; o.connect(lp); o.start(t); os.push(o);
+      });
+      lp.connect(g); g.connect(dest);
+      return { stop: function (at) { os.forEach(function (o) { try { o.stop(at); } catch (e) {} }); } };
+    }
+    var CH = [[50, 57, 62, 65, 69], [48, 55, 60, 64, 67], [50, 57, 62, 65, 69], [45, 52, 57, 60, 64], [50, 57, 62, 65, 69], [48, 55, 60, 64, 67], [45, 52, 57, 60, 64], [50, 57, 62, 65, 69]];
+    var MEL = [
+      [[0, 69, 2], [2, 74, 1], [3, 72, 1], [4, 69, 2]],
+      [[0, 67, 2], [2, 72, 2], [4, 67, 2]],
+      [[0, 65, 1], [1, 67, 1], [2, 69, 2], [4, 74, 2]],
+      [[0, 72, 3], [3, 69, 1], [4, 67, 1], [5, 64, 1]],
+      [[0, 69, 2], [2, 74, 1], [3, 72, 1], [4, 69, 2]],
+      [[0, 67, 2], [2, 72, 1], [3, 74, 1], [4, 76, 2]],
+      [[0, 76, 1], [1, 74, 1], [2, 72, 2], [4, 69, 2]],
+      [[0, 74, 3], [3, 69, 3]]
+    ];
+    function bar(ctx, dest, t, i, ly) {
+      var c = CH[i];
+      pluck(ctx, dest, hz(c[0]), t, 1.0, 0.2); pluck(ctx, dest, hz(c[1]), t + 3 * E8, 0.9, 0.14);
+      [[1, 2], [2, 3], [4, 2], [5, 4]].forEach(function (a) { pluck(ctx, dest, hz(c[a[1]]), t + a[0] * E8, 0.5, 0.07); });
+      if (ly.drum) { drum(ctx, dest, t, 0.32); drum(ctx, dest, t + 3 * E8, 0.22); jingle(ctx, dest, t + 2 * E8, 0.06); jingle(ctx, dest, t + 5 * E8, 0.06); jingle(ctx, dest, t + E8, 0.03); jingle(ctx, dest, t + 4 * E8, 0.03); }
+      if (ly.melody) MEL[i].forEach(function (n) { flute(ctx, dest, hz(n[1]), t + n[0] * E8, n[2] * E8 * 0.95, 0.085); pluck(ctx, dest, hz(n[1] - 12), t + n[0] * E8, 0.6, 0.06); });
+    }
+    var LAND = [74, 76, 79, 81, 83, 86, 88, 91], SPARK = [86, 88, 91, 93, 95];
+    function introSfx(ctx, dest, t0) {
+      function ok(t) { return t >= ctx.currentTime - 0.03; }
+      for (var k = 0; k < 8; k++) {
+        var d = t0 + 1 + k * 0.28;
+        if (ok(d)) whoosh(ctx, dest, d, 0.9, 0.09);
+        if (ok(d + 0.85)) bell(ctx, dest, hz(LAND[k]), d + 0.85, 0.16, 1.3);
+      }
+      if (ok(t0 + 4)) { boom(ctx, dest, t0 + 4); shimmer(ctx, dest, t0 + 4); [62, 69, 74, 77].forEach(function (m, j) { bell(ctx, dest, hz(m + 12), t0 + 4 + j * 0.04, 0.12, 2.2); }); }
+      for (var i = 0; i < 11; i++) { var tt = t0 + 4.5 + i * 0.07; if (ok(tt)) bell(ctx, dest, hz(SPARK[i % 5]), tt, 0.035, 0.6); }
+      if (ok(t0 + 6.5)) bell(ctx, dest, hz(81), t0 + 6.5, 0.09, 1.6);
+    }
+    function rustle(ctx, dest, t) {
+      for (var i = 0; i < 14; i++) {
+        var s = ctx.createBufferSource(), bp = ctx.createBiquadFilter(), g = ctx.createGain(), tt = t + i * 0.1 + Math.random() * 0.04;
+        s.buffer = nbuf(ctx); bp.type = 'bandpass'; bp.frequency.value = 1400 + Math.random() * 1800; bp.Q.value = 0.9;
+        env(g, tt, 0.01, 0.05 * (1 - i / 18), 0.09); s.connect(bp); bp.connect(g); g.connect(dest); s.start(tt, Math.random(), 0.2); s.stop(tt + 0.2);
+      }
+      bell(ctx, dest, hz(79), t + 1.35, 0.07, 1.2);
+    }
+    function ping(ctx, dest, t) { bell(ctx, dest, hz(86), t, 0.07, 0.9); bell(ctx, dest, hz(91), t + 0.1, 0.05, 0.9); }
+    function fan(ctx, dest, t) { [74, 78, 81, 86, 90].forEach(function (m, j) { bell(ctx, dest, hz(m), t + j * 0.09, 0.14, 1.8); }); shimmer(ctx, dest, t); }
+
+    function unlock() {
+      if (!L.on) return Promise.resolve(false);
+      try {
+        if (!L.ctx) { var AC = window.AudioContext || window.webkitAudioContext; if (!AC) return Promise.resolve(false); L.ctx = new AC(); L.bus = makeBus(L.ctx); }
+        if (L.ctx.state === 'running') return Promise.resolve(true);
+        return L.ctx.resume().then(function () { return L.ctx.state === 'running'; }, function () { return false; });
+      } catch (e) { return Promise.resolve(false); }
+    }
+    function startMusic(gridStart, melodyAt) {
+      if (L.sess) return;
+      var ctx = L.ctx, now = ctx.currentTime;
+      L.sess = ctx.createGain(); L.sess.gain.value = 1; L.sess.connect(L.bus.music);
+      L.dr = drone(ctx, L.sess, now);
+      var n = gridStart < now ? Math.ceil((now - gridStart) / BAR) : 0;
+      L.nextT = gridStart + n * BAR; L.nextBar = n; L.melodyAt = melodyAt;
+      L.timer = setInterval(function () {
+        while (L.nextT < ctx.currentTime + 0.5) {
+          var full = L.nextT >= L.melodyAt - 0.01;
+          bar(ctx, L.sess, L.nextT, L.nextBar % 8, { drum: full, melody: full });
+          L.nextT += BAR; L.nextBar++;
+        }
+      }, 120);
+    }
+    function stopMusic(f) {
+      clearInterval(L.timer); L.timer = 0;
+      var s = L.sess, dr = L.dr; L.sess = null; L.dr = null;
+      if (!s || !L.ctx) return;
+      var t = L.ctx.currentTime;
+      try { s.gain.cancelScheduledValues(t); s.gain.setValueAtTime(s.gain.value, t); s.gain.linearRampToValueAtTime(0, t + f); } catch (e) {}
+      if (dr) dr.stop(t + f + 0.1);
+      setTimeout(function () { try { s.disconnect(); } catch (e) {} }, f * 1000 + 300);
+    }
+    function cutIntro() {
+      var g = L.intro; L.intro = null;
+      if (!g || !L.ctx) return;
+      try { g.gain.cancelScheduledValues(L.ctx.currentTime); g.gain.setTargetAtTime(0, L.ctx.currentTime, 0.04); } catch (e) {}
+      setTimeout(function () { try { g.disconnect(); } catch (e) {} }, 400);
+    }
+    function intro() {
+      if (!L.on) return;
+      var tok = ++L.tok; L.vis = L.vis || performance.now();
+      cutIntro();
+      unlock().then(function (ok) {
+        if (!ok || tok !== L.tok || !S.tour.open || S.tour.step !== 0) return;
+        var ctx = L.ctx, t0 = ctx.currentTime - (performance.now() - L.vis) / 1000;
+        L.intro = ctx.createGain(); L.intro.connect(L.bus.sfx);
+        introSfx(ctx, L.intro, t0);
+        startMusic(t0 + 0.58, t0 + 4.0);
+      });
+    }
+    function scroll() {
+      if (!L.on) return;
+      var tok = ++L.tok; cutIntro();
+      unlock().then(function (ok) {
+        if (!ok || tok !== L.tok || !S.tour.open || S.tour.step < 1) return;
+        var ctx = L.ctx; L.melodyAt = 0;
+        rustle(ctx, L.bus.sfx, ctx.currentTime + 0.05);
+        startMusic(ctx.currentTime, 0);
+      });
+    }
+    function sfxNow(fn) { if (!L.on) return; unlock().then(function (ok) { if (ok) fn(L.ctx, L.bus.sfx, L.ctx.currentTime + 0.02); }); }
+    function ui() {
+      var on = L.on, svg = '<svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 8 H6 L11 4 V16 L6 12 H3Z" fill="currentColor"/>' + (on ? '<path d="M14 7 C15.5 8.5 15.5 11.5 14 13"/><path d="M16.5 4.5 C19 7.5 19 12.5 16.5 15.5"/>' : '<path d="M14 7 L19 13 M19 7 L14 13"/>') + '</svg>';
+      Array.prototype.forEach.call(document.querySelectorAll('[data-snd]'), function (b) {
+        b.innerHTML = svg; b.setAttribute('aria-pressed', on ? 'true' : 'false');
+        b.setAttribute('aria-label', on ? 'Sound on. Turn sound off' : 'Sound off. Turn sound on'); b.title = on ? 'Sound on' : 'Sound off';
+      });
+    }
+    function toggle() {
+      L.on = !L.on;
+      try { localStorage.setItem(KEY, L.on ? 'on' : 'off'); } catch (e) {}
+      ui();
+      if (!L.on) { stopMusic(0.25); cutIntro(); L.tok++; }
+      else if (S.tour.open) { if (S.tour.step === 0) intro(); else scroll(); }
+      else sfxNow(function (c, d, t) { bell(c, d, hz(81), t, 0.1, 1.2); });
+    }
+    function gesture() { if (L.on && S.tour.open && !L.sess) { if (S.tour.step === 0) intro(); else scroll(); } }
+    ['pointerdown', 'keydown'].forEach(function (ev) { document.addEventListener(ev, gesture, true); });
+    document.addEventListener('visibilitychange', function () {
+      if (!L.ctx) return;
+      if (document.hidden) L.ctx.suspend().catch(function () {}); else if (L.on) L.ctx.resume().catch(function () {});
+    });
+    return {
+      intro: intro, scroll: scroll, ui: ui, toggle: toggle, stop: function () { stopMusic(1.0); cutIntro(); L.tok++; L.vis = 0; },
+      markVisual: function () { L.vis = performance.now(); },
+      ping: function () { sfxNow(ping); }, fanfare: function () { sfxNow(fan); },
+      isOn: function () { return L.on; },
+      offline: function (ctx, secs) {
+        var bus = makeBus(ctx), ig = ctx.createGain(); ig.connect(bus.sfx); introSfx(ctx, ig, 0);
+        var s = ctx.createGain(); s.connect(bus.music); drone(ctx, s, 0);
+        for (var b = 0, t = 0.58; t < secs; b++, t += BAR) bar(ctx, s, t, b % 8, { drum: t >= 3.99, melody: t >= 3.99 });
+        var g2 = ctx.createGain(); g2.connect(bus.sfx); rustle(ctx, g2, 9.0); ping(ctx, g2, 11.0); fan(ctx, g2, 12.2);
+      }
+    };
+  })();
+  window.__SND = Snd;
+
+  // ---- Welcome tour: animated intro once per round, then four cards. Replay from the ? button.
+  var TOUR = [
+    { h: 'Earn charms', t: 'When you do something well, a teammate grants you a magic charm and tells you why. Each one is drawn at random from eight.', more: '#guide', art: 'earn' },
+    { h: 'Collect all eight', t: 'Every charm is worth exactly the same. Collect one of each to complete a set. A second copy of any charm is a spare.', more: '#guide-charms', art: 'collect' },
+    { h: 'Trade your spares', t: 'Post a spare on the Open Market and take offers that give you charms you are missing. Trades are one-for-one and offers expire after 3 days.', more: '#guide', art: 'trade' },
+    { h: 'Climb the ranks', t: 'Each full set ranks you up and uses one of each charm. Reach Charm Master before the round ends on the 1st, then it all starts again.', more: '#guide-ranks', art: 'rank' }
+  ];
+  var tourPrevFocus = null, tourTm = 0;
+  function tourArt(k) {
+    var h = '';
+    if (k === 'earn') {
+      h = '<div class="tart art-earn"><div class="sock">' + charmSvg('star') + '</div>';
+      for (var a = 0; a < 6; a++) h += '<i class="sp" style="--x:' + Math.round(Math.cos(a * 1.05) * 70) + 'px; --y:' + Math.round(Math.sin(a * 1.05) * 60) + 'px; --d:' + (a * 0.35) + 's"></i>';
+      return h + '<span class="chip2">Great work on the release!</span></div>';
+    }
+    if (k === 'collect') return '<div class="tart art-collect">' + CHARMS.map(function (c, i) { return '<div class="sock" style="--i:' + i + '">' + charmSvg(c.k) + '</div>'; }).join('') + '</div>';
+    if (k === 'trade') return '<div class="tart art-trade"><div class="sock l">' + charmSvg('heart') + '</div><div class="sock r">' + charmSvg('clover') + '</div><span class="arr" aria-hidden="true">&#8644;</span></div>';
+    return '<div class="tart art-rank">' + RANKS.map(function (r, i) { return '<div class="rk" style="--i:' + i + '" title="' + esc(r.name) + '">' + avatar(i) + '</div>'; }).join('') + '</div>';
+  }
+  function renderTour() {
+    var el = $('tour'), n = S.tour.step, h;
+    if (n === 0) {
+      var order = [0, 5, 2, 7, 4, 1, 6, 3];
+      var orbs = CHARMS.map(function (c, i) {
+        return '<div class="arm" style="--a:' + (i * 45) + 'deg"><div class="orb" style="--d:' + (1 + order[i] * 0.28).toFixed(2) + 's; --gc:' + c.glow + '"><i class="tr"></i><span class="ic">' + charmSvg(c.k) + '</span></div></div>';
+      }).join('');
+      var letters = 'Charm Master'.split('').map(function (ch, i) {
+        return ch === ' ' ? '<span class="tl sp" style="--i:' + i + '"></span>' : '<span class="tl gtext" style="--i:' + i + '">' + ch + '</span>';
+      }).join('');
+      var tp = '', tx = 0, k = 0;
+      while (tx <= 1240) { var th = 40 + ((k * 53) % 70); tp += (tx === 0 ? 'M0 160 ' : '') + 'L' + tx + ' ' + (160 - th) + ' L' + (tx + 14) + ' ' + (160 - th + 18) + ' L' + (tx + 28) + ' ' + (160 - th) + ' '; tx += 40; k++; }
+      var forest = '<svg class="tforest" viewBox="0 0 1240 160" preserveAspectRatio="none" aria-hidden="true"><path d="' + tp + 'L1240 160Z" fill="#0b0824"/></svg>';
+      h = '<button type="button" class="tskip tsnd" data-t="snd" data-snd></button><div class="tpx" aria-hidden="true"><div class="tbright"></div><div class="st1"></div><div class="st2"></div></div>' + forest +
+        '<button type="button" class="tskip" data-t="skipintro">Skip intro</button>' +
+        '<div class="tscene">' +
+        '<div class="t-stage" aria-hidden="true"><i class="rays"></i><i class="seed"></i><i class="hoop"></i>' + orbs +
+        '<i class="shock" style="--d:4s"></i><i class="shock" style="--d:4.3s"></i><i class="tflash"></i>' +
+        '<svg class="crest" viewBox="0 0 44 48"><defs><clipPath id="tshc"><path d="M22 2 L40 9 V24 C40 35 32 42 22 46 C12 42 4 35 4 24 V9 Z"/></clipPath><linearGradient id="tgl" x1="0" x2="1"><stop offset="0" stop-color="#fff" stop-opacity="0"/><stop offset="0.5" stop-color="#fff" stop-opacity="0.9"/><stop offset="1" stop-color="#fff" stop-opacity="0"/></linearGradient></defs>' +
+        '<path d="M22 2 L40 9 V24 C40 35 32 42 22 46 C12 42 4 35 4 24 V9 Z" fill="#1a0f2e" stroke="#e8c36a" stroke-width="2.5" stroke-linejoin="round"/><path d="M22 8 L35 13 V24 C35 32 29 37 22 40 C15 37 9 32 9 24 V13 Z" fill="none" stroke="#8a6a2f" stroke-width="1.5"/><polygon points="22,14 25,21 32.5,21.5 26.7,26.2 28.7,33.5 22,29.4 15.3,33.5 17.3,26.2 11.5,21.5 19,21" fill="#ffd86b"/>' +
+        '<g clip-path="url(#tshc)"><rect class="glint" x="0" y="-4" width="12" height="56" fill="url(#tgl)" transform-origin="0 0"/></g></svg></div>' +
+        '<div class="eyebrow">' + esc(CUR_LONG) + ' round</div>' +
+        '<h1 class="t-title" aria-label="Charm Master">' + letters + '</h1>' +
+        '<p class="t-sub">Earn charms. Trade spares. Climb the ranks.</p>' +
+        '<div class="t-go"><button type="button" class="btn" data-t="next">Begin</button></div></div>';
+    } else {
+      var ROM = ['I', 'II', 'III', 'IV'];
+      var orn = '<svg class="orn" viewBox="0 0 120 10" aria-hidden="true"><path d="M2 5 H48 M72 5 H118" stroke="#9a6b2c" stroke-width="1.2"/><path d="M60 0 L65 5 L60 10 L55 5Z" fill="#9a6b2c"/></svg>';
+      h = '<button type="button" class="tskip tsnd" data-t="snd" data-snd></button><button type="button" class="tskip" data-t="close">Skip tour</button>' +
+        '<div class="scr"><div class="paper"></div><div class="rod t"></div><div class="rod b"></div>' +
+        '<div class="scroller" id="tscroll" tabindex="0" aria-label="How to play. Scroll to read.">' +
+        '<div class="sc-head"><div class="eyebrow">The scroll of ' + esc(CUR_NAME) + '</div><h1>Your quest begins</h1></div>' +
+        TOUR.map(function (c, i) {
+          return '<section class="tsec"><div class="num">' + ROM[i] + '</div><h2>' + c.h + '</h2>' + tourArt(c.art) + '<p>' + c.t + '</p>' +
+            '<a class="rm" href="' + c.more + '" data-t="more">Read more</a>' + (i < TOUR.length - 1 ? orn : '') + '</section>';
+        }).join('') +
+        '<div class="tend"><button type="button" class="btn" data-t="done">Begin your quest</button></div></div>' +
+        '<div class="hint" id="thint">Scroll to unroll the secrets</div></div>';
+    }
+    el.innerHTML = h;
+    Snd.ui();
+    if (n === 0) Snd.markVisual();
+    el.className = 'tour' + (n === 0 ? ' t-intro' : '');
+    el.style.removeProperty('--mx'); el.style.removeProperty('--my');
+    {
+      var tc = document.createElement('div'); tc.className = 'tembers'; tc.setAttribute('aria-hidden', 'true');
+      for (var i = 0; i < 18; i++) { var e = document.createElement('i'); e.className = 'ember'; var sz = 2 + (i % 3); e.style.cssText = 'left:' + ((i * 37) % 100) + '%; width:' + sz + 'px; height:' + sz + 'px; animation-delay:' + ((i * 0.6) % 7).toFixed(1) + 's; animation-duration:' + (6 + (i % 4)) + 's'; tc.appendChild(e); }
+      el.insertBefore(tc, el.firstChild);
+    }
+    clearTimeout(tourTm);
+    if (n > 0) {
+      var sc = $('tscroll'), secs = sc.querySelectorAll('.tsec');
+      var hint = $('thint');
+      sc.addEventListener('scroll', function () { if (sc.scrollTop > 30) hint.classList.add('gone'); });
+      tourTm = setTimeout(function () {
+        if ('IntersectionObserver' in window) {
+          var io = new IntersectionObserver(function (es) { es.forEach(function (x) { if (x.isIntersecting) { x.target.classList.add('in'); Snd.ping(); io.unobserve(x.target); } }); }, { root: sc, threshold: 0.3 });
+          Array.prototype.forEach.call(secs, function (x) { io.observe(x); });
+        } else Array.prototype.forEach.call(secs, function (x) { x.classList.add('in'); });
+      }, 1300);
+      sc.focus({ preventScroll: true });
+      Snd.scroll();
+      return;
+    }
+    var nx = el.querySelector('[data-t="next"]'); if (nx) nx.focus({ preventScroll: true });
+    Snd.intro();
+  }
+  function openTour() {
+    tourPrevFocus = document.activeElement;
+    S.tour = { open: true, step: 0 };
+    $('tour').hidden = false; document.body.style.overflow = 'hidden';
+    renderTour();
+  }
+  function closeTour(goTo) {
+    if (!S.tour.open) return;
+    clearTimeout(tourTm);
+    Snd.stop();
+    S.tour.open = false; $('tour').hidden = true; $('tour').innerHTML = ''; document.body.style.overflow = '';
+    var p = me();
+    if (p && S.db && p.welcomed !== CUR) {
+      p.welcomed = CUR;
+      try { S.db.doc('people/' + p.id).update({ welcomed: CUR }).catch(function () {}); } catch (e) {}
+    }
+    if (goTo) location.hash = goTo;
+    else if (tourPrevFocus && tourPrevFocus.focus) { try { tourPrevFocus.focus(); } catch (e) {} }
+  }
+  function tourGo(n) { S.tour.step = Math.max(0, Math.min(TOUR.length, n)); renderTour(); }
+  $('tour').addEventListener('click', function (e) {
+    var b = e.target.closest('[data-t]'); if (!b) return;
+    var a = b.getAttribute('data-t');
+    if (a === 'skipintro') tourGo(1);
+    else if (a === 'next') { if (S.tour.step >= TOUR.length) closeTour('#profile'); else tourGo(S.tour.step + 1); }
+    else if (a === 'snd') Snd.toggle();
+    else if (a === 'done') { Snd.fanfare(); closeTour('#profile'); }
+    else if (a === 'close') closeTour();
+    else if (a === 'more') { e.preventDefault(); closeTour(b.getAttribute('href')); }
+  });
+  document.addEventListener('keydown', function (e) {
+    if (!S.tour.open) return;
+    if (e.key === 'Escape') closeTour();
+    else if (e.key === 'Tab') {
+      var f = $('tour').querySelectorAll('button, a[href], [tabindex="0"]'); if (!f.length) return;
+      var first = f[0], lastEl = f[f.length - 1];
+      if (e.shiftKey && document.activeElement === first) { e.preventDefault(); lastEl.focus(); }
+      else if (!e.shiftKey && document.activeElement === lastEl) { e.preventDefault(); first.focus(); }
+    }
+  });
+  $('tour').addEventListener('pointermove', function (e) {
+    if (!S.tour.open || S.tour.step !== 0) return;
+    var el = $('tour'), x = (e.clientX / window.innerWidth - 0.5) * 2, y = (e.clientY / window.innerHeight - 0.5) * 2;
+    el.style.setProperty('--mx', x.toFixed(3)); el.style.setProperty('--my', y.toFixed(3));
+  });
+  $('help').addEventListener('click', openTour);
+  $('snd').addEventListener('click', Snd.toggle);
+  Snd.ui();
+
+  $('who').addEventListener('click', function () {
+    closeTour();
+    S.me = null; saveMe(null); gateSig = ''; S.t = { give: '', want: '', busy: false, busyId: '', msg: '', bad: false, notice: null, open: false, tab: 'you', filter: '', shown: 12 }; location.hash = ''; render();
+  });
+  window.addEventListener('hashchange', render);
+  $('gate-body').addEventListener('click', function (e) {
+    var cb = e.target.closest('button[data-act="join-cancel"]');
+    if (cb && S.db && S.pend) {
+      var old = S.pend; S.pend = null; savePend(null); S.joinMsg = ''; gateSig = '';
+      S.db.doc('people/' + old).delete().catch(function () {}); render(); return;
+    }
+    var b = e.target.closest('button[data-pick]');
+    if (!b) return;
+    S.me = b.getAttribute('data-pick'); saveMe(S.me); location.hash = '#profile'; render();
+  });
+  $('gate-body').addEventListener('submit', function (e) {
+    e.preventDefault();
+    if (!S.db) return;
+    if (e.target.id === 'join-form') {
+      var jb = e.target.querySelector('button'), jn = $('join-name').value.trim().replace(/\s+/g, ' ');
+      if (!jn) return;
+      if (S.people.some(function (p) { return p.name.toLowerCase() === jn.toLowerCase(); })) {
+        S.joinMsg = 'That name is already on the roster or waiting for approval. Pick it from the list, or use your full name.'; gateSig = ''; render(); return;
+      }
+      jb.disabled = true;
+      var jid = slug(jn);
+      S.db.doc('people/' + jid).set({ name: jn, role: 'member', rounds: {}, status: 'pending', requestedAt: new Date().toISOString() }).then(function () {
+        S.pend = jid; savePend(jid); S.declined = false; S.joinMsg = ''; gateSig = ''; render();
+      }, function () { jb.disabled = false; S.joinMsg = 'That request could not be sent. Check your connection and try again.'; gateSig = ''; render(); });
+      return;
+    }
+    var input = $('boot-name'), btn = e.target.querySelector('button');
+    btn.disabled = true;
+    addPerson(input.value, 'admin').then(function (id) { S.me = id; saveMe(id); location.hash = '#profile'; render(); })
+      .catch(function () { btn.disabled = false; });
+  });
+  $('roster-list').addEventListener('click', function (e) {
+    var b = e.target.closest('button[data-act]');
+    if (!b || !S.db) return;
+    var p = person(b.getAttribute('data-pid'));
+    if (!p) return;
+    if (b.getAttribute('data-act') === 'tog') {
+      var r = b.getAttribute('data-round'), on = !inRound(p, r), rounds = {};
+      rounds[r] = on;
+      save(S.db.doc('people/' + p.id).update({ rounds: rounds }));
+    } else {
+      var admins = S.people.filter(function (x) { return x.role === 'admin'; }).length;
+      if (p.role === 'admin' && admins < 2) { say('There must always be at least one admin.', true); return; }
+      save(S.db.doc('people/' + p.id).update({ role: p.role === 'admin' ? 'member' : 'admin' }));
+    }
+  });
+  $('req-box').addEventListener('click', function (e) {
+    var b = e.target.closest('button[data-act]'), m = me();
+    if (!b || !S.db || !m || m.role !== 'admin') return;
+    var p = person(b.getAttribute('data-pid'));
+    if (!p || p.status !== 'pending') return;
+    if (b.getAttribute('data-act') === 'approve') {
+      var rounds = {}; rounds[CUR] = true; rounds[NEXT] = true;
+      save(S.db.doc('people/' + p.id).update({ status: 'active', rounds: rounds }).then(function () { say('Approved ' + p.name + '. They are in the ' + CUR_NAME + ' and ' + NEXT_NAME + ' rounds.'); }));
+    } else {
+      save(S.db.doc('people/' + p.id).delete().then(function () { say('Declined ' + p.name + '.'); }));
+    }
+  });
+  $('add-form').addEventListener('submit', function (e) {
+    e.preventDefault();
+    if (!S.db) return;
+    var input = $('new-name'), btn = e.target.querySelector('button');
+    btn.disabled = true;
+    addPerson(input.value, 'member').then(function () {
+      say('Added ' + input.value.trim() + ' to the ' + CUR_NAME + ' and ' + NEXT_NAME + ' rounds.');
+      input.value = '';
+    }).catch(function (err) {
+      if (err && err.code === 'duplicate') say('Someone with that name is already on the roster.', true);
+      else if (err && err.code !== 'empty') say('That person could not be added. Try again.', true);
+    }).then(function () { btn.disabled = false; });
+  });
+
+  $('g-why').addEventListener('input', function () { $('g-count').textContent = this.value.length + '/140'; });
+  function gmsg(t) { $('g-msg').textContent = t; }
+  function resetGrant() {
+    S.g = { phase: 'idle' };
+    $('g-who').value = ''; $('g-why').value = ''; $('g-count').textContent = '0/140'; gmsg('');
+    renderStage();
+  }
+  $('stage').addEventListener('click', function (e) {
+    if (e.target.closest('#g-again')) resetGrant();
+  });
+  $('grant-form').addEventListener('submit', function (e) {
+    e.preventDefault();
+    var m = me();
+    if (!m || !S.db || S.g.phase === 'casting') return;
+    var toId = $('g-who').value, why = $('g-why').value.trim().replace(/\s+/g, ' ');
+    var to = person(toId);
+    if (!to) { gmsg('Choose who earned it.'); return; }
+    if (to.id === m.id || !inRound(to, CUR)) { gmsg('Choose a teammate who is in this round.'); return; }
+    if (!why) { gmsg('Add a short reason so everyone knows what the charm is for.'); return; }
+    gmsg('');
+    var idx = drawIndex(), started = Date.now();
+    S.g = { phase: 'casting', pick: idx, toId: toId, why: why };
+    $('g-cast').disabled = true;
+    renderStage();
+    grantCharm(m.id, toId, idx, why).then(function (res) {
+      return sleep(Math.max(0, 2600 - (Date.now() - started))).then(function () { S.g = { phase: 'reveal', pick: idx, toId: toId, why: why, note: res.noteFailed, done: res.done, sets: res.sets }; });
+    }, function () {
+      S.g = { phase: 'error' };
+    }).then(function () { $('g-cast').disabled = false; renderStage(); });
+  });
+
+  $('wipe-panel').addEventListener('click', function (e) {
+    var b = e.target.closest('button[data-act]'), m = me();
+    if (!b || !S.db || b.disabled || !m || m.role !== 'admin') return;
+    var act = b.getAttribute('data-act'), W = S.wipe;
+    if (act === 'wipe-ask') { W.step = 1; W.msg = ''; W.bad = false; renderWipe(); }
+    else if (act === 'wipe-cancel') { W.step = 0; renderWipe(); }
+    else if (act === 'wipe-go') {
+      W.busy = true; W.msg = ''; renderWipe();
+      wipeRound().then(function (n) {
+        W.busy = false; W.step = 0; W.bad = false;
+        W.msg = CUR_NAME + ' has been wiped (' + n + (n === 1 ? ' record' : ' records') + ' removed). Everyone starts again as a Wanderer.';
+        S.g = { phase: 'idle' }; S.t = { give: '', want: '', busy: false, busyId: '', msg: '', bad: false, notice: null, open: false, tab: 'you', filter: '', shown: 12 };
+        stageSig = ''; render();
+      }, function () {
+        W.busy = false; W.bad = true; W.msg = 'The wipe did not finish. Some records may remain, so check the leaderboard and try again.'; render();
+      });
+    }
+  });
+
+  $('lb').addEventListener('click', function (e) {
+    if (e.target.closest('button[data-lb="more"]')) { S.hd.shown += 10; render(); }
+  });
+  $('lb-q').addEventListener('input', function () { S.hd.q = this.value; S.hd.shown = 10; render(); });
+
+  // ---- trade events ----
+  function tsay(text, bad) { S.t.msg = text; S.t.bad = !!bad; }
+  $('v-trade').addEventListener('click', function (e) {
+    var m = me(); if (!m) return;
+    var pk = e.target.closest('button.pk');
+    if (pk && !pk.disabled) {
+      var side = pk.getAttribute('data-side'), k = pk.getAttribute('data-k');
+      S.t[side] = S.t[side] === k ? '' : k; tsay(''); render(); return;
+    }
+    var tb = e.target.closest('button[data-tab]');
+    if (tb) { S.t.tab = tb.getAttribute('data-tab'); S.t.shown = 12; render(); return; }
+    var fb = e.target.closest('button[data-f]');
+    if (fb) { var fk = fb.getAttribute('data-f'); S.t.filter = (fk && S.t.filter === fk) ? '' : fk; S.t.shown = 12; render(); return; }
+    var b = e.target.closest('button[data-act]');
+    if (!b || !S.db || b.disabled) return;
+    var act = b.getAttribute('data-act'), id = b.getAttribute('data-id');
+    if (act === 't-toggle') { S.t.open = !S.t.open; if (!S.t.open) { S.t.give = ''; S.t.want = ''; } tsay(''); render(); return; }
+    if (act === 't-more') { S.t.shown += 12; render(); return; }
+    if (act === 't-send') {
+      var T_ = S.t;
+      if (!T_.give || !T_.want || T_.give === T_.want || T_.busy) return;
+      var exp = new Date(Date.now() + TRADE_MS).toISOString();
+      T_.busy = true; T_.notice = null; tsay(''); render();
+      S.db.collection('trades').add({ roundId: CUR, fromId: m.id, give: T_.give, want: T_.want, status: 'open', at: new Date().toISOString(), expiresAt: exp }).then(function () {
+        T_.busy = false; T_.give = ''; T_.want = ''; T_.open = false; T_.tab = 'mine'; T_.shown = 12; tsay('Posted to the Open Market. It expires ' + fmtDay(exp) + ' if nobody takes it.'); render();
+      }, function () { T_.busy = false; tsay('That offer could not be posted. Check your connection and try again.', true); render(); });
+      return;
+    }
+    if (!id || S.t.busyId) return;
+    S.t.busyId = id; S.t.notice = null; render();
+    function fail(e) { S.t.busyId = ''; S.t.notice = { text: TERR[e && e.code] || 'That did not work. Check your connection and try again.', up: -1 }; render(); }
+    if (act === 't-accept') {
+      acceptTrade(id, m.id).then(function (r) {
+        S.t.busyId = '';
+        S.t.notice = { text: 'Swapped! You gave ' + charmByKey(r.gave).name + ' to ' + nameOf(r.from) + ' and received ' + charmByKey(r.got).name + '.' + (r.done ? ' Set complete, you are now ' + rankFor(r.sets).name + '!' : ''), up: r.done ? rankIdx(r.sets) : -1 };
+        render();
+      }, fail);
+    } else if (act === 't-cancel') {
+      terminal(id, 'cancelled', m.id, 'fromId').then(function () { S.t.busyId = ''; render(); }, fail);
+    }
+  });
+  setInterval(function () { if (me() && route() === 'trade') render(); }, 60000);
+
+  // ---- start ----
+  render();
+  var use = (window.claude && window.claude.use) ? window.claude.use('db') : Promise.resolve(null);
+  use.then(function (db) {
+    if (!db) { S.ready = true; S.nodb = true; render(); return; }
+    S.db = db;
+    db.collection('cards').where('roundId', '==', CUR).onSnapshot(function (snap) {
+      var all = {};
+      snap.docs.forEach(function (d) {
+        var x = d.data() || {};
+        if (x.personId && x.counts && typeof x.counts === 'object') all[x.personId] = { counts: x.counts, sets: Math.max(0, Math.floor(+x.sets || 0)) };
+      });
+      S.cards = all; render();
+    }, function () {});
+    db.collection('grants').where('roundId', '==', CUR).onSnapshot(function (snap) {
+      S.grants = snap.docs.map(function (d) { return d.data() || {}; }).filter(function (g) {
+        return g.toId && charmByKey(g.charm) && typeof g.at === 'string';
+      }).map(function (g) { return { toId: String(g.toId), byId: String(g.byId || ''), charm: g.charm, reason: String(g.reason || ''), at: g.at }; })
+        .sort(function (a, b) { return a.at < b.at ? 1 : a.at > b.at ? -1 : 0; });
+      render();
+    }, function () {});
+    db.collection('trades').where('roundId', '==', CUR).onSnapshot(function (snap) {
+      S.trades = snap.docs.map(function (d) {
+        var x = d.data() || {};
+        return { id: d.id, fromId: String(x.fromId || ''), toId: String(x.toId || ''), give: x.give, want: x.want, status: String(x.status || ''),
+          at: String(x.at || ''), expiresAt: String(x.expiresAt || ''), resolvedAt: String(x.resolvedAt || '') };
+      }).filter(function (t) { return t.fromId && charmByKey(t.give) && charmByKey(t.want); })
+        .sort(function (a, b) { return a.at < b.at ? 1 : a.at > b.at ? -1 : 0; });
+      render();
+    }, function () {});
+    db.collection('people').onSnapshot(function (snap) {
+      S.people = snap.docs.map(function (d) {
+        var x = d.data() || {};
+        return { id: d.id, name: String(x.name || 'Unnamed'), role: x.role === 'admin' ? 'admin' : 'member', rounds: (x.rounds && typeof x.rounds === 'object') ? x.rounds : {}, status: x.status === 'pending' ? 'pending' : 'active', requestedAt: String(x.requestedAt || ''), welcomed: String(x.welcomed || '') };
+      }).sort(function (a, b) { return a.name.localeCompare(b.name); });
+      S.ready = true; render();
+    }, function () { S.ready = true; S.err = true; render(); });
+  }).catch(function () { S.ready = true; S.nodb = true; render(); });
+
+  // Decorative embers
+  var sky = $('sky');
+  for (var i = 0; i < 14; i++) {
+    var e = document.createElement('div');
+    e.className = 'ember';
+    var s = 3 + (i % 3);
+    e.style.left = ((i * 17 + 6) % 96) + '%';
+    e.style.bottom = ((i * 41) % 180) + 'px';
+    e.style.width = s + 'px';
+    e.style.height = s + 'px';
+    e.style.animationDuration = (8 + (i % 5) * 1.6) + 's';
+    e.style.animationDelay = '-' + (i * 0.9).toFixed(1) + 's';
+    sky.appendChild(e);
+  }
+})();
+</script>
+
+</body></html>

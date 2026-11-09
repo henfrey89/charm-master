@@ -1,0 +1,18 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() { return request.auth != null; }
+    match /people/{id} {
+      allow read, delete: if signedIn();
+      allow create, update: if signedIn() && request.resource.data.name is string
+        && request.resource.data.name.size() > 0 && request.resource.data.name.size() <= 60;
+    }
+    match /cards/{id}  { allow read, write: if signedIn(); }
+    match /trades/{id} { allow read, write: if signedIn(); }
+    match /grants/{id} {
+      allow read, delete: if signedIn();
+      allow create: if signedIn() && request.resource.data.reason is string && request.resource.data.reason.size() <= 140;
+    }
+    match /_leases/{id} { allow read, write: if signedIn(); }
+  }
+}
