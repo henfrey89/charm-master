@@ -13,6 +13,7 @@ service cloud.firestore {
       allow read, delete: if signedIn();
       allow create: if signedIn() && request.resource.data.reason is string && request.resource.data.reason.size() <= 140;
     }
-    match /_leases/{id} { allow read, write: if signedIn(); }
+    match /_config/{id} { allow read, write: if signedIn(); }
+  match /_leases/{id} { allow read, write: if signedIn(); }
   }
 }
