@@ -676,6 +676,8 @@ textarea.field { resize: vertical; min-height: 110px; }
 }
 /* ---- mobile: bottom tab bar ---- */
 .pl-m { display: none; }
+#install, #install-tip { display: none !important; }
+@media (max-width: 760px) { body[data-route="home"] #install:not([hidden]), body[data-route="home"] #install-tip { display: inline !important; } }
 .tab .ti, .tab.mobonly { display: none; }
 @media (max-width: 760px) {
   .bar .tab.mobonly { display: flex; }
@@ -1403,6 +1405,7 @@ footer.ground .gutter { align-items: center; row-gap: 8px; }
     $('v-trade').hidden = !m || r !== 'trade';
     $('v-guide').hidden = !m || r !== 'guide';
     renderQAdmin();
+    document.body.setAttribute('data-route', m ? r : '');
     var brand = document.querySelector('.brand');
     if (m && r === 'home') brand.setAttribute('aria-current', 'page'); else brand.removeAttribute('aria-current');
     var tabs = [['home', 'Home', 'home', 'mobonly'], ['card', 'My Profile', 'profile'], ['grant', 'Grant'], ['trade', 'Trade'], ['guide', 'Guide', 'guide', 'deskonly'], ['quests', 'Quests']];
