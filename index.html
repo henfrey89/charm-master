@@ -52,6 +52,104 @@
   window.claude = { use: function (n) { return n === 'db' ? init() : Promise.resolve(null); } };
 })();
 </script>
+<link rel="preload" as="image" href="splash.jpg">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cinzel:wght@900&family=Cormorant+Garamond:ital,wght@1,600&display=swap">
+<style>
+#splash{position:fixed;inset:0;z-index:99999;overflow:hidden;box-sizing:border-box;color:#f1e6d0;font-family:Cinzel,Georgia,serif;background:linear-gradient(#16123f 0,#272253 70px,#2a2230 70%,#0a0710 100%);transition:opacity .7s ease}
+#splash.sp-out{opacity:0;pointer-events:none}
+#splash *{box-sizing:border-box}
+.sp-art{position:absolute;left:-88vw;top:70px;width:210vw;overflow:hidden;-webkit-mask-image:linear-gradient(to bottom,transparent 0,#000 90px,#000 82%,transparent 100%);mask-image:linear-gradient(to bottom,transparent 0,#000 90px,#000 82%,transparent 100%)}
+.sp-art img{display:block;width:100%;height:auto;animation:spkb 26s ease-in-out infinite alternate;transform-origin:50% 38%}
+.sp-shade{position:absolute;left:0;right:0;bottom:0;height:55%;background:linear-gradient(transparent,rgba(5,3,10,.55) 35%,rgba(5,3,10,.94) 78%);pointer-events:none}
+.sp-vig{position:absolute;inset:0;background:radial-gradient(ellipse 90% 75% at 50% 42%,transparent 55%,rgba(2,1,6,.6) 100%);pointer-events:none}
+.sp-title{position:absolute;top:max(16px,env(safe-area-inset-top,0px));left:0;right:0;display:flex;flex-direction:column;align-items:center;gap:6px;text-align:center}
+.sp-eye{font-size:10px;letter-spacing:.42em;color:#c9a35a}
+.sp-gold{font-weight:900;font-size:30px;letter-spacing:.08em;background:linear-gradient(#fff6c8 0%,#f0cf78 42%,#a56f1f 54%,#f3d98a 100%);-webkit-background-clip:text;background-clip:text;color:transparent;filter:drop-shadow(0 2px 0 #2e1a06) drop-shadow(0 0 14px rgba(233,196,106,.4))}
+.sp-foot{position:absolute;left:0;right:0;bottom:max(18px,env(safe-area-inset-bottom,0px));display:flex;flex-direction:column;align-items:center;gap:18px;padding:0 20px}
+.sp-plaque{width:100%;max-width:800px;padding:3px;border-radius:8px;background:linear-gradient(135deg,#f3d98a,#8a5a1c 30%,#e9c46a 55%,#5a3b12 80%,#f3d98a);box-shadow:0 10px 30px rgba(0,0,0,.8)}
+.sp-in{position:relative;border-radius:6px;padding:12px 14px 14px;background:repeating-linear-gradient(115deg,rgba(255,255,255,.012) 0 2px,transparent 2px 5px),linear-gradient(rgba(27,22,38,.9),rgba(12,9,18,.92));box-shadow:inset 0 0 0 1px #3a2a12,inset 0 0 26px rgba(0,0,0,.8)}
+.sp-in i{position:absolute;width:6px;height:6px;border-radius:50%;background:radial-gradient(circle at 35% 30%,#fff3b0,#8a5a1c)}
+.sp-lbl{text-align:center;font-size:10px;letter-spacing:.34em;color:#b8935a;margin-bottom:10px}
+.sp-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px 8px;justify-items:center}
+.sp-sock{width:56px;height:56px;padding:3px;border-radius:50%;background:conic-gradient(from 210deg,#6b4a1a,#f3d98a,#8a5a1c,#e9c46a,#5a3b12,#f3d98a,#6b4a1a);animation:spign .9s ease-out both}
+.sp-well{position:relative;width:100%;height:100%;border-radius:50%;background:radial-gradient(circle at 50% 30%,#1d1736,#06040c 78%);box-shadow:inset 0 3px 8px #000,inset 0 -2px 4px rgba(255,255,255,.05);display:flex;align-items:center;justify-content:center}
+.sp-well svg{position:absolute;width:60%;height:60%}
+.sp-dim{opacity:.12;filter:grayscale(1)}
+.sp-lit{animation:sprev .9s ease-out both}
+.sp-load{width:100%;max-width:600px}
+.sp-ltxt{text-align:center;font-size:11px;letter-spacing:.3em;color:#e9c46a;margin-bottom:6px;text-shadow:0 1px 2px #000}
+.sp-bar{padding:3px;border-radius:5px;background:linear-gradient(#f3d98a,#8a5a1c 50%,#e9c46a);box-shadow:0 4px 14px rgba(0,0,0,.8)}
+.sp-track{position:relative;height:12px;border-radius:3px;background:#050309;box-shadow:inset 0 2px 5px #000;overflow:hidden}
+.sp-fill{position:relative;height:100%;width:0;background:linear-gradient(#ffe9a8,#e9a02e 45%,#a35a12);overflow:hidden;box-shadow:0 0 14px rgba(255,190,80,.7);animation:spbar 4s cubic-bezier(.2,.6,.3,1) forwards;transition:width .35s ease-out}
+.sp-fill.sp-done{animation:none;width:100%}
+.sp-fill b{position:absolute;top:0;bottom:0;width:30%;background:linear-gradient(90deg,transparent,rgba(255,255,255,.55),transparent);animation:spsh 3.4s linear infinite}
+.sp-tip{text-align:center;font-family:'Cormorant Garamond',Georgia,serif;font-style:italic;font-weight:600;font-size:16px;line-height:1.3;color:#d9c9a3;text-shadow:0 1px 3px #000}
+.sp-tip span{display:none}
+@keyframes sprev{from{opacity:0;transform:scale(.86)}to{opacity:1;transform:scale(1)}}
+@keyframes spign{from{box-shadow:0 3px 8px #000}to{box-shadow:0 3px 8px #000,0 0 18px rgba(255,214,120,.5)}}
+@keyframes spbar{from{width:0}to{width:88%}}
+@keyframes spsh{0%{transform:translateX(-100%)}100%{transform:translateX(420%)}}
+@keyframes spkb{from{transform:scale(1)}to{transform:scale(1.05)}}
+@media (min-width:761px){
+  #splash{background:linear-gradient(#16123f 0,#272253 105px,#272253 100%)}
+  .sp-art{left:0;width:100%;top:clamp(80px,12vh,110px);bottom:0;-webkit-mask-image:linear-gradient(to bottom,transparent 0,#000 110px);mask-image:linear-gradient(to bottom,transparent 0,#000 110px)}
+  .sp-art img{height:100%;object-fit:cover;object-position:50% 0;transform-origin:62% 30%}
+  .sp-shade{height:42%}
+  .sp-title{top:20px;gap:8px}
+  .sp-eye{font-size:14px;letter-spacing:.5em}
+  .sp-gold{font-size:clamp(40px,4vw,56px);letter-spacing:.12em}
+  .sp-foot{gap:22px;bottom:34px}
+  .sp-in{padding:12px 28px 16px}
+  .sp-in i{width:8px;height:8px}
+  .sp-lbl{font-size:11px;letter-spacing:.4em}
+  .sp-grid{grid-template-columns:repeat(8,minmax(0,1fr));gap:8px}
+  .sp-sock{width:76px;height:76px;padding:4px}
+  .sp-ltxt{font-size:12px;letter-spacing:.34em}
+  .sp-track{height:14px}
+  .sp-tip{font-size:18px}
+  .sp-tip span{display:inline}
+}
+@media (prefers-reduced-motion:reduce){.sp-art img,.sp-sock,.sp-lit,.sp-fill b{animation:none}.sp-fill{animation:none;width:88%}#splash{transition:none}}
+</style>
+<div id="splash" role="status" aria-label="Charm Master is loading">
+  <div class="sp-art"><img src="splash.jpg" alt=""></div>
+  <div class="sp-shade"></div><div class="sp-vig"></div>
+  <div class="sp-title"><div class="sp-eye">ENTER THE REALM OF</div><div class="sp-gold">CHARM MASTER</div></div>
+  <div class="sp-foot">
+    <div class="sp-plaque"><div class="sp-in">
+      <i style="top:6px;left:6px"></i><i style="top:6px;right:6px"></i><i style="bottom:6px;left:6px"></i><i style="bottom:6px;right:6px"></i>
+      <div class="sp-lbl">YOUR BRACELET</div>
+      <div class="sp-grid" id="sp-grid"></div>
+    </div></div>
+    <div class="sp-load">
+      <div class="sp-ltxt">LOADING…</div>
+      <div class="sp-bar"><div class="sp-track"><div class="sp-fill" id="sp-fill"><b></b></div></div></div>
+    </div>
+    <div class="sp-tip">Eight charms, all equally rare.<span> Collect a full set before the round ends.</span></div>
+  </div>
+</div>
+<script>
+(function () {
+  var el = document.getElementById('splash'); if (!el) return;
+  var t0 = Date.now(), MIN = 1700, MAX = 9000, ended = false;
+  var C = [['heart', '#ff5d8f'], ['star', '#ffd84d'], ['horseshoe', '#cfd8e6'], ['clover', '#3ddc84'], ['moon', '#6bb6ff'], ['unicorn', '#c4a1ff'], ['rainbow', '#ffa94d'], ['balloon', '#ff4d4d']];
+  var g = document.getElementById('sp-grid'), h = '';
+  C.forEach(function (c, i) {
+    var d = (0.15 + i * 0.17).toFixed(2) + 's';
+    h += '<div class="sp-sock" style="animation-delay:' + d + '"><div class="sp-well">' +
+      '<svg class="sp-dim" viewBox="0 0 100 100" aria-hidden="true"><use href="#c-' + c[0] + '"/></svg>' +
+      '<svg class="sp-lit" viewBox="0 0 100 100" aria-hidden="true" style="animation-delay:' + d + ';filter:drop-shadow(0 0 7px ' + c[1] + ')"><use href="#c-' + c[0] + '"/></svg></div></div>';
+  });
+  g.innerHTML = h;
+  function end() {
+    if (ended) return; ended = true;
+    document.getElementById('sp-fill').classList.add('sp-done');
+    setTimeout(function () { el.classList.add('sp-out'); setTimeout(function () { if (el.parentNode) el.parentNode.removeChild(el); }, 800); }, 380);
+  }
+  window.__splashDone = function () { var w = Math.max(0, MIN - (Date.now() - t0)); setTimeout(end, w); window.__splashDone = function () {}; };
+  setTimeout(end, MAX);
+})();
+</script>
 <title>Charm Master</title>
 <meta name="claude:viewport-fit-sides" content="cover">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;600;700&family=Open+Sans:wght@400;600;700&display=swap">
@@ -1486,6 +1584,7 @@ footer.ground .gutter { align-items: center; row-gap: 8px; }
   }
   function render() {
     setPill();
+    if (window.__splashDone && S.qs.ready && (S.ready || !QID)) window.__splashDone();
     var pv = location.hash === '#privacy';
     $('v-privacy').hidden = !pv;
     var qv = !pv && (!QID || location.hash === '#quests');
