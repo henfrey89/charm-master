@@ -797,7 +797,18 @@ body.stage-live { overflow: hidden; }
 .tab .ti, .tab.mobonly { display: none; }
 @media (max-width: 760px) {
   .bar .tab.mobonly { display: flex; }
-  .bar .tab.deskonly, #snd, #qbtn { display: none !important; }
+  .bar .tab.deskonly, #qbtn { display: none !important; }
+  .bar #snd { order: 3; margin-left: 0; }
+  .bar .helpbtn, .bar #who { flex: 0 0 34px; width: 34px; height: 34px; }
+  .bar .gutter { gap: 6px; }
+  .bar .brand .gtext { font-size: 14px; letter-spacing: 0.02em; }
+  .bar .brand svg { width: 28px; height: 31px; }
+  .bar .brand { gap: 6px; }
+  .bar .brand .gtext { display: none; }
+  .bar .brand { flex: 0 0 auto; }
+  .bar .right .pill:not(.qpill) svg { display: inline; }
+  .bar .right .pill:not(.qpill) { padding: 5px 8px; font-size: 12px; }
+  .bar .right .pill:not(.qpill) svg { display: none; }
   .bar .gutter { flex-wrap: nowrap; padding-block: 8px; gap: 10px; }
   .bar .brand { order: 1; flex: 1 1 auto; min-width: 0; }
   .bar #help { order: 3; } .bar #who { order: 4; }
