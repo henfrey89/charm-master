@@ -235,7 +235,7 @@ header.bar { position: relative; background: rgba(7, 9, 26, 0.94); border-bottom
 .qitem { display: flex; flex-direction: column; gap: 8px; }
 .qitem .qform { padding: 12px 14px; border: 1px solid var(--bronze); background: rgba(0,0,0,.35); }
 .qtag { margin-left: 8px; font-size: 11px; letter-spacing: .08em; text-transform: uppercase; color: #9fe3b0; border: 1px solid #2f6b45; padding: 1px 6px; }
-#v-quests .panel { display: flex; flex-direction: column; gap: 14px; }
+#v-guilds .panel { display: flex; flex-direction: column; gap: 14px; }
 .bar .tabs { gap: 0; }
 @media (max-width: 1240px) { .brand .gtext { font-size: 20px; letter-spacing: 0.08em; } .bar .gutter { column-gap: 14px; } }
 .brand { display: flex; align-items: center; gap: 12px; text-decoration: none; padding-block: 4px 2px; border-bottom: 3px solid transparent; }
@@ -798,16 +798,16 @@ textarea.field { resize: vertical; min-height: 110px; }
   .bar .brand .gtext { font-size: 17px; letter-spacing: 0.06em; }
   .bar .gutter { gap: 8px 10px; }
   /* guilds screen: same compact panels as the other phone screens */
-  #v-quests > div { gap: 16px !important; }
-  #v-quests .gate { padding: 16px; gap: 12px; }
-  #v-quests .gate h1, #v-quests .gate h2 { font-size: 26px; line-height: 1.15; }
-  #v-quests .gate p { font-size: 15px; line-height: 1.5; }
-  #v-quests .eyebrow { font-size: 12px; }
+  #v-guilds > div { gap: 16px !important; }
+  #v-guilds .gate { padding: 16px; gap: 12px; }
+  #v-guilds .gate h1, #v-guilds .gate h2 { font-size: 26px; line-height: 1.15; }
+  #v-guilds .gate p { font-size: 15px; line-height: 1.5; }
+  #v-guilds .eyebrow { font-size: 12px; }
   .qitem .lbrow { padding: 12px; gap: 8px 10px; }
   .qitem .lbname { flex: 1 1 100%; }
   .qitem .lbrow > div[style*="margin-left"] { flex: 1 1 100%; margin-left: 0 !important; }
   .qitem .lbrow .btn2 { width: 100%; min-height: 44px; }
-  #v-quests .inline-form .btn { width: 100%; }
+  #v-guilds .inline-form .btn { width: 100%; }
 }
 /* ---- arrivals overlay ---- */
 .arrive { position: fixed; inset: 0; z-index: 80; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px; text-align: center; padding: 24px 20px calc(24px + env(safe-area-inset-bottom, 0px)); overflow-y: auto; background: radial-gradient(ellipse at 50% 30%, #2a1a5c, #0a0614 72%); }
@@ -1075,7 +1075,7 @@ footer.ground .gutter { align-items: center; row-gap: 8px; }
       </a>
       <nav class="tabs" id="tabs" aria-label="Main"></nav>
       <div class="right">
-      <a class="pill qpill" id="qbtn" href="#quests" title="Switch guild"></a>
+      <a class="pill qpill" id="qbtn" href="#guilds" title="Switch guild"></a>
       <div class="pill">
         <svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><path d="M9.5 1.5 A6.5 6.5 0 1 0 14.5 10 A5 5 0 1 1 9.5 1.5Z" fill="#7cc0ff"/></svg>
         <span id="round-pill">This month's round</span>
@@ -1264,7 +1264,7 @@ footer.ground .gutter { align-items: center; row-gap: 8px; }
 
   <div class="gutter view" id="v-gate">
     <section class="panel gate">
-      <a class="linkbtn gate-back" href="#quests" style="align-self:flex-start; display:inline-flex; align-items:center; min-height:44px; margin: -8px 0 0 -4px">&larr; All guilds</a>
+      <a class="linkbtn gate-back" href="#guilds" style="align-self:flex-start; display:inline-flex; align-items:center; min-height:44px; margin: -8px 0 0 -4px">&larr; All guilds</a>
       <div class="eyebrow">Charm Master · <span id="gate-round"></span></div>
       <h1 class="gtext">Who Goes There?</h1>
       <p class="muted" id="gate-copy">Gathering the roster…</p>
@@ -1308,7 +1308,7 @@ footer.ground .gutter { align-items: center; row-gap: 8px; }
     </section>
   </div>
 
-  <div class="gutter view" id="v-quests" hidden>
+  <div class="gutter view" id="v-guilds" hidden>
     <div style="display:flex; flex-direction:column; gap:24px">
     <section class="panel gate">
       <div class="eyebrow">Charm Master</div>
@@ -1370,7 +1370,7 @@ footer.ground .gutter { align-items: center; row-gap: 8px; }
       <div id="wipe-body" style="display:flex; flex-direction:column; gap:16px"></div>
       <div class="msg" id="wipe-msg" role="status" aria-live="polite"></div>
     </section>
-    <section class="panel roster danger" id="quest-panel" style="margin-top:28px" hidden>
+    <section class="panel roster danger" id="guild-panel" style="margin-top:28px" hidden>
       <div class="eyebrow">This guild</div>
       <h2 class="gtext" style="font-size:28px; margin:0">Retire or delete this guild</h2>
       <p class="muted" id="qa-desc"></p>
@@ -1552,11 +1552,12 @@ footer.ground .gutter { align-items: center; row-gap: 8px; }
   var DAYS_LEFT = new Date(T.y, T.m, 0).getDate() - T.d;
 
   // Remembering who you are on this device is a per-viewer convenience only.
-  // ---- quests: each guild keeps its own people, cards, trades, grants and admin PIN under a prefixed set of collections ----
+  // ---- guilds: each guild keeps its own people, cards, trades, grants and admin PIN under a prefixed set of collections ----
   function lsGet(k) { try { return localStorage.getItem(k); } catch (e) { return null; } }
-  var QID = lsGet('charm-master.quest') || (lsGet('charm-chart.me') ? 'main' : '');
-  var QP = (QID && QID !== 'main') ? QID + '~' : '';
-  var SFX = QP ? '.' + QID : '';
+  if (location.hash === '#quests') location.hash = '#guilds';
+  var GID = lsGet('charm-master.guild') || lsGet('charm-master.quest') || (lsGet('charm-chart.me') ? 'main' : '');
+  var QP = (GID && GID !== 'main') ? GID + '~' : '';
+  var SFX = QP ? '.' + GID : '';
   var KEY = 'charm-chart.me' + SFX;
   function loadMe() { try { return localStorage.getItem(KEY); } catch (e) { return null; } }
   var KEYP = 'charm-master.pending' + SFX;
@@ -1583,6 +1584,7 @@ footer.ground .gutter { align-items: center; row-gap: 8px; }
   }
   function route() {
     var m = me();
+    if (location.hash === '#quests') location.hash = '#guilds';
     if (location.hash === '#home' && m) return 'home';
     if (location.hash === '#grant' && m) return 'grant';
     if (location.hash === '#trade' && m) return 'trade';
@@ -1623,7 +1625,7 @@ footer.ground .gutter { align-items: center; row-gap: 8px; }
   }
 
   // ---- views ----
-  function questName(id) {
+  function guildName(id) {
     var q = S.qs.list.filter(function (x) { return x.id === id; })[0];
     return q ? q.name : (id === 'main' ? 'Original Guild' : 'Guild');
   }
@@ -1634,21 +1636,21 @@ footer.ground .gutter { align-items: center; row-gap: 8px; }
   }
   function render() {
     setPill();
-    if (window.__splashDone && S.qs.ready && (S.ready || !QID)) window.__splashDone();
+    if (window.__splashDone && S.qs.ready && (S.ready || !GID)) window.__splashDone();
     var pv = location.hash === '#privacy';
     $('v-privacy').hidden = !pv;
-    var qv = !pv && (!QID || location.hash === '#quests');
-    $('qbtn').textContent = QID ? 'Guild: ' + questName(QID) : 'Choose a guild';
-    $('v-quests').hidden = !qv;
+    var qv = !pv && (!GID || location.hash === '#guilds');
+    $('qbtn').textContent = GID ? 'Guild: ' + guildName(GID) : 'Choose a guild';
+    $('v-guilds').hidden = !qv;
     if (pv) {
-      ['v-gate', 'v-card', 'v-home', 'v-grant', 'v-admin', 'v-trade', 'v-guide', 'v-quests'].forEach(function (i) { $(i).hidden = true; });
+      ['v-gate', 'v-card', 'v-home', 'v-grant', 'v-admin', 'v-trade', 'v-guide', 'v-guilds'].forEach(function (i) { $(i).hidden = true; });
       $('tabs').innerHTML = ''; $('help').hidden = true; $('snd').hidden = true;
       return;
     }
-    if (qv && !(QID && me())) {
+    if (qv && !(GID && me())) {
       ['v-gate', 'v-card', 'v-home', 'v-grant', 'v-admin', 'v-trade', 'v-guide'].forEach(function (i) { $(i).hidden = true; });
       $('tabs').innerHTML = ''; $('help').hidden = true; $('snd').hidden = true;
-      renderQuests(); return;
+      renderGuilds(); return;
     }
     if (!me() && S.pend && S.ready) {
       var ap = person(S.pend);
@@ -1656,7 +1658,7 @@ footer.ground .gutter { align-items: center; row-gap: 8px; }
     }
     watchCard();
     var m = me(), r = route();
-    if (qv) r = 'quests';
+    if (qv) r = 'guilds';
     $('round-pill').innerHTML = CUR_SHORT + '<span class="pl-d"> · ' +
       (DAYS_LEFT === 0 ? 'last day' : DAYS_LEFT === 1 ? '1 day left' : DAYS_LEFT + ' days left') + '</span><span class="pl-m"> · ' + DAYS_LEFT + 'd</span>';
     $('round-pill').parentNode.title = CUR_LONG + ' round';
@@ -1680,7 +1682,7 @@ footer.ground .gutter { align-items: center; row-gap: 8px; }
     document.body.setAttribute('data-route', m ? r : '');
     var brand = document.querySelector('.brand');
     if (m && r === 'home') brand.setAttribute('aria-current', 'page'); else brand.removeAttribute('aria-current');
-    var tabs = [['home', 'Home', 'home', 'mobonly'], ['card', 'My Profile', 'profile'], ['grant', 'Grant'], ['trade', 'Trade'], ['guide', 'Guide', 'guide', 'deskonly'], ['quests', 'Guilds']];
+    var tabs = [['home', 'Home', 'home', 'mobonly'], ['card', 'My Profile', 'profile'], ['grant', 'Grant'], ['trade', 'Trade'], ['guide', 'Guide', 'guide', 'deskonly'], ['guilds', 'Guilds']];
     if (m && m.role === 'admin') tabs.push(['admin', 'Admin']);
     var ICONS = {
       home: 'M3 11l9-8 9 8M5 10v10h5v-6h4v6h5V10',
@@ -1688,7 +1690,7 @@ footer.ground .gutter { align-items: center; row-gap: 8px; }
       grant: 'M12 3l2 5 5 2-5 2-2 5-2-5-5-2 5-2zM19 16l.8 2 2 .8-2 .8-.8 2-.8-2-2-.8 2-.8z',
       trade: 'M4 8h14l-3-3M20 16H6l3 3',
       guide: 'M4 5a2 2 0 012-2h13v16H6a2 2 0 00-2 2zM4 19a2 2 0 012-2h13',
-      quests: 'M5 21V4M5 5h12l-2 4 2 4H5',
+      guilds: 'M5 21V4M5 5h12l-2 4 2 4H5',
       admin: 'M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z'
     };
     var inbox = m ? incoming(m.id).length : 0;
@@ -1699,7 +1701,7 @@ footer.ground .gutter { align-items: center; row-gap: 8px; }
       var short = t[0] === 'card' ? 'Profile' : t[1];
       return '<a class="tab ' + (t[3] || '') + '" href="#' + (t[2] || t[0]) + '"' + (t[0] === r ? ' aria-current="page"' : '') + '><svg class="ti" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="' + (ICONS[t[0]] || '') + '"/></svg><span class="tl">' + (t[0] === 'card' ? '<span class="dlong">My </span>' : '') + short + '</span>' + dot + '</a>';
     }).join('') : '';
-    if (qv) renderQuests();
+    if (qv) renderGuilds();
     if (!m) renderGate();
     else if (r === 'trade') renderTrade(m);
     else if (r === 'guide') renderGuide();
@@ -2280,7 +2282,7 @@ footer.ground .gutter { align-items: center; row-gap: 8px; }
 
   var wipeSig = '';
   function renderWipe() {
-    var qn = questName(QID); $('wipe-round').textContent = CUR_LONG + ' in ' + qn; $('wipe-title').textContent = 'Wipe progress in ' + qn;
+    var qn = guildName(GID); $('wipe-round').textContent = CUR_LONG + ' in ' + qn; $('wipe-title').textContent = 'Wipe progress in ' + qn;
     var W = S.wipe, nGrants = S.grants.length, nSets = 0, nCharms = 0, nTrades = S.trades.length;
     Object.keys(S.cards).forEach(function (id) {
       var e = S.cards[id]; nSets += e.sets || 0;
@@ -3209,10 +3211,10 @@ footer.ground .gutter { align-items: center; row-gap: 8px; }
 
   // ---- Retire / delete this guild (admin page) ----
   var QA = { step: '', busy: false, msg: '', bad: false, nm: '' }, qaSig = '';
-  function curQuest() { return QID && QID !== 'main' ? S.qs.list.filter(function (x) { return x.id === QID; })[0] : null; }
+  function curGuild() { return GID && GID !== 'main' ? S.qs.list.filter(function (x) { return x.id === GID; })[0] : null; }
   function qaSay(t, bad) { QA.msg = t; QA.bad = !!bad; qaSig = ''; render(); }
   function renderQAdmin() {
-    var q = curQuest(), panel = $('quest-panel');
+    var q = curGuild(), panel = $('guild-panel');
     panel.hidden = !q;
     if (!q) return;
     var sig = [q.id, q.name, q.retired, QA.step, QA.busy, QA.msg, QA.bad].join('#');
@@ -3232,9 +3234,9 @@ footer.ground .gutter { align-items: center; row-gap: 8px; }
     $('qa-body').innerHTML = b;
     $('qa-msg').textContent = QA.msg; $('qa-msg').className = 'msg' + (QA.bad ? ' bad' : '');
   }
-  function leaveQuest() {
-    try { localStorage.removeItem('charm-master.quest'); } catch (e) {}
-    location.hash = '#quests'; location.reload();
+  function leaveGuild() {
+    try { localStorage.removeItem('charm-master.guild'); localStorage.removeItem('charm-master.quest'); } catch (e) {}
+    location.hash = '#guilds'; location.reload();
   }
   $('qa-body').addEventListener('input', function (e) { if (e.target.id === 'qa-name') QA.nm = e.target.value; });
   $('qa-body').addEventListener('click', function (e) {
@@ -3244,14 +3246,14 @@ footer.ground .gutter { align-items: center; row-gap: 8px; }
     if (a === 'cancel') { QA.step = ''; QA.msg = ''; qaSig = ''; render(); return; }
     if (a === 'restore') {
       QA.busy = true; qaSig = ''; render();
-      S.raw.doc('quests/' + QID).update({ retired: false }).then(function () { QA.busy = false; qaSay('Restored. ' + (curQuest() || {}).name + ' is back on the Guilds list.'); },
+      S.raw.doc('guilds/' + GID).update({ retired: false }).then(function () { QA.busy = false; qaSay('Restored. ' + (curGuild() || {}).name + ' is back on the Guilds list.'); },
         function () { QA.busy = false; qaSay('That could not be saved. Try again.', true); });
     }
   });
   $('qa-body').addEventListener('submit', function (e) {
     e.preventDefault();
     var f = e.target.closest('form[data-qa]'); if (!f || QA.busy) return;
-    var q = curQuest(); if (!q) return;
+    var q = curGuild(); if (!q) return;
     var a = f.getAttribute('data-qa'), pin = f.querySelector('#qa-pin').value, k = 'charm-master.qadminfail' + SFX;
     var left = lockLeftK(k);
     if (left) { qaSay('Too many wrong tries. Try again in ' + left + ' minute' + (left === 1 ? '' : 's') + '.', true); return; }
@@ -3261,14 +3263,14 @@ footer.ground .gutter { align-items: center; row-gap: 8px; }
       if (!ok) { failedK(k); QA.busy = false; qaSay('That is not the admin PIN.', true); return; }
       passedK(k);
       if (a === 'retire-go') {
-        return S.raw.doc('quests/' + QID).update({ retired: true, retiredAt: new Date().toISOString() }).then(leaveQuest);
+        return S.raw.doc('guilds/' + GID).update({ retired: true, retiredAt: new Date().toISOString() }).then(leaveGuild);
       }
       var cols = ['people', 'cards', 'trades', 'grants', '_config'];
       return Promise.all(cols.map(function (c) { return S.db.collection(c).get().then(function (sn) { return sn.docs.map(function (d) { return c + '/' + d.id; }); }); })).then(function (lists) {
         var paths = [].concat.apply([], lists);
         function chunk(i) { if (i >= paths.length) return Promise.resolve(); return Promise.all(paths.slice(i, i + 10).map(function (x) { return S.db.doc(x).delete(); })).then(function () { return chunk(i + 10); }); }
         return chunk(0);
-      }).then(function () { return S.raw.doc('quests/' + QID).delete(); }).then(leaveQuest);
+      }).then(function () { return S.raw.doc('guilds/' + GID).delete(); }).then(leaveGuild);
     }).catch(function () { QA.busy = false; qaSay('That did not work. Check your connection and try again.', true); });
   });
 
@@ -3277,25 +3279,25 @@ footer.ground .gutter { align-items: center; row-gap: 8px; }
   // ---- Guilds page ----
   function joinedMap() { try { return JSON.parse(lsGet('charm-master.joined') || '{}') || {}; } catch (e) { return {}; } }
   function markJoined(id) { var j = joinedMap(); j[id] = 1; try { localStorage.setItem('charm-master.joined', JSON.stringify(j)); } catch (e) {} }
-  function enterQuest(id) {
+  function enterGuild(id) {
     markJoined(id);
-    try { localStorage.setItem('charm-master.quest', id); } catch (e) {}
-    if (id === QID) { location.hash = '#profile'; render(); return; }
+    try { localStorage.setItem('charm-master.guild', id); } catch (e) {}
+    if (id === GID) { location.hash = '#profile'; render(); return; }
     location.hash = ''; location.reload();
   }
-  function renderQuests() {
+  function renderGuilds() {
     var Q = S.qs, j = joinedMap(), term = Q.q.trim().toLowerCase();
-    var sig = [Q.ready, S.nodb, Q.showRet, Q.q, Q.open, Q.msg, Q.busy, QID, Object.keys(j).join(','), Q.list.map(function (x) { return x.id + x.name; }).join('|')].join('#');
+    var sig = [Q.ready, S.nodb, Q.showRet, Q.q, Q.open, Q.msg, Q.busy, GID, Object.keys(j).join(','), Q.list.map(function (x) { return x.id + x.name; }).join('|')].join('#');
     if (sig === qSig) return;
     qSig = sig;
     var el = $('q-list');
     $('q-new').style.display = S.nodb ? 'none' : '';
     if (S.nodb) { el.innerHTML = '<p class="muted">Saved data is not available in this view, so guilds cannot load.</p>'; return; }
     if (!Q.ready) { el.innerHTML = '<p class="muted">Gathering the guilds…</p>'; return; }
-    var rows = Q.list.filter(function (x) { return (Q.showRet || !x.retired || x.id === QID) && (!term || x.name.toLowerCase().indexOf(term) >= 0); });
+    var rows = Q.list.filter(function (x) { return (Q.showRet || !x.retired || x.id === GID) && (!term || x.name.toLowerCase().indexOf(term) >= 0); });
     if (!rows.length) { el.innerHTML = '<p class="muted">' + (Q.list.length ? 'No guild matches that search.' : 'No guilds yet. Start the first one below.') + '</p>'; return; }
     el.innerHTML = rows.map(function (x) {
-      var cur = x.id === QID, joined = !!j[x.id] || cur;
+      var cur = x.id === GID, joined = !!j[x.id] || cur;
       var d = x.createdAt ? new Date(x.createdAt) : null;
       var sub = x.nopass ? 'The original group' : (d && !isNaN(d) ? 'Started ' + d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : 'Guild');
       var btn = cur ? '<button type="button" class="btn2" data-qact="enter" data-q="' + esc(x.id) + '">Back to guild</button>'
@@ -3317,7 +3319,7 @@ footer.ground .gutter { align-items: center; row-gap: 8px; }
   $('q-list').addEventListener('click', function (e) {
     var b = e.target.closest('button[data-qact]'); if (!b) return;
     var id = b.getAttribute('data-q');
-    if (b.getAttribute('data-qact') === 'enter') { enterQuest(id); return; }
+    if (b.getAttribute('data-qact') === 'enter') { enterGuild(id); return; }
     S.qs.open = id; S.qs.msg = ''; render();
   });
   $('q-list').addEventListener('submit', function (e) {
@@ -3330,7 +3332,7 @@ footer.ground .gutter { align-items: center; row-gap: 8px; }
     S.qs.busy = true; render();
     hashPin(q.pass.salt, pw).then(function (h) {
       S.qs.busy = false;
-      if (h === q.pass.hash) { passedK(k); enterQuest(id); return; }
+      if (h === q.pass.hash) { passedK(k); enterGuild(id); return; }
       failedK(k); var l2 = lockLeftK(k);
       S.qs.msg = l2 ? 'Too many wrong tries. Try again in ' + l2 + ' minutes.' : 'That is not the password for this guild.'; render();
     });
@@ -3346,8 +3348,8 @@ footer.ground .gutter { align-items: center; row-gap: 8px; }
     m.textContent = ''; btn.disabled = true;
     var id = slug(nm).replace(/-/g, ''), salt = newSalt();
     hashPin(salt, p1).then(function (h) {
-      return S.raw.doc('quests/' + id).set({ name: nm, nameLower: nm.toLowerCase(), pass: { salt: salt, hash: h }, createdAt: new Date().toISOString() });
-    }).then(function () { enterQuest(id); }, function () { btn.disabled = false; m.textContent = 'That could not be saved. Check your connection and try again.'; });
+      return S.raw.doc('guilds/' + id).set({ name: nm, nameLower: nm.toLowerCase(), pass: { salt: salt, hash: h }, createdAt: new Date().toISOString() });
+    }).then(function () { enterGuild(id); }, function () { btn.disabled = false; m.textContent = 'That could not be saved. Check your connection and try again.'; });
   });
 
   // ---- start ----
@@ -3366,10 +3368,21 @@ footer.ground .gutter { align-items: center; row-gap: 8px; }
       S.qs.list = l.sort(function (a, b) { return a.name.localeCompare(b.name); });
       S.qs.ready = true; render();
     }
-    raw.collection('people').get().then(function (sn) { legacy = sn.docs.length > 0; }, function () {}).then(function () {
-      raw.collection('quests').onSnapshot(qlist, function () { S.qs.ready = true; S.qs.list = legacy ? [{ id: 'main', name: 'Original Guild', createdAt: '', pass: null, nopass: true }] : []; render(); });
+    // One-off: copy the old "quests" registry into "guilds" (runs once, then leaves a marker so deleted guilds never come back).
+    function migrateGuilds() {
+      return raw.doc('_config/guilds-migrated').get().then(function (m) {
+        if (m && m.exists) return;
+        return raw.collection('quests').get().then(function (sn) {
+          return Promise.all(sn.docs.map(function (d) {
+            return raw.doc('guilds/' + d.id).get().then(function (g) { if (!(g && g.exists)) return raw.doc('guilds/' + d.id).set(d.data()); });
+          }));
+        }).then(function () { return raw.doc('_config/guilds-migrated').set({ at: new Date().toISOString() }); });
+      }).catch(function () {});
+    }
+    raw.collection('people').get().then(function (sn) { legacy = sn.docs.length > 0; }, function () {}).then(migrateGuilds).then(function () {
+      raw.collection('guilds').onSnapshot(qlist, function () { S.qs.ready = true; S.qs.list = legacy ? [{ id: 'main', name: 'Original Guild', createdAt: '', pass: null, nopass: true }] : []; render(); });
     });
-    if (QID) {
+    if (GID) {
     db.collection('cards').where('roundId', '==', CUR).onSnapshot(function (snap) {
       var all = {};
       snap.docs.forEach(function (d) {
