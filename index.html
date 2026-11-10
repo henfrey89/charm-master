@@ -83,8 +83,15 @@
 .sp-fill{position:relative;height:100%;width:0;background:linear-gradient(#ffe9a8,#e9a02e 45%,#a35a12);overflow:hidden;box-shadow:0 0 14px rgba(255,190,80,.7);animation:spbar 4s cubic-bezier(.2,.6,.3,1) forwards;transition:width .35s ease-out}
 .sp-fill.sp-done{animation:none;width:100%}
 .sp-fill b{position:absolute;top:0;bottom:0;width:30%;background:linear-gradient(90deg,transparent,rgba(255,255,255,.55),transparent);animation:spsh 3.4s linear infinite}
+.sp-load{position:relative}
+.sp-enter{position:absolute;left:0;right:0;top:0;bottom:0;display:flex;align-items:center;justify-content:center;opacity:0;pointer-events:none;transition:opacity .5s ease;border:0;background:none;padding:0;cursor:pointer;font-family:inherit}
+.sp-enter span{display:block;width:100%;padding:13px 10px;border-radius:5px;border:3px solid #c99a3e;background:linear-gradient(#f6d77a,#c99a3e 55%,#8a5a1c);color:#2a1604;font-weight:900;font-size:16px;letter-spacing:.3em;text-indent:.3em;box-shadow:0 4px 14px rgba(0,0,0,.8),0 0 22px rgba(255,200,90,.45);animation:sppulse 1.8s ease-in-out infinite}
+#splash.sp-ready .sp-bar,#splash.sp-ready .sp-ltxt{opacity:0;transition:opacity .4s ease}
+#splash.sp-ready .sp-enter{opacity:1;pointer-events:auto}
+#splash.sp-ready{cursor:pointer}
 .sp-tip{text-align:center;font-family:'Cormorant Garamond',Georgia,serif;font-style:italic;font-weight:600;font-size:16px;line-height:1.3;color:#d9c9a3;text-shadow:0 1px 3px #000}
 .sp-tip span{display:none}
+@keyframes sppulse{0%,100%{transform:scale(1);box-shadow:0 4px 14px rgba(0,0,0,.8),0 0 14px rgba(255,200,90,.3)}50%{transform:scale(1.025);box-shadow:0 4px 14px rgba(0,0,0,.8),0 0 30px rgba(255,200,90,.7)}}
 @keyframes sprev{from{opacity:0;transform:scale(.86)}to{opacity:1;transform:scale(1)}}
 @keyframes spign{from{box-shadow:0 3px 8px #000}to{box-shadow:0 3px 8px #000,0 0 18px rgba(255,214,120,.5)}}
 @keyframes spbar{from{width:0}to{width:88%}}
@@ -109,9 +116,9 @@
   .sp-tip{font-size:18px}
   .sp-tip span{display:inline}
 }
-@media (prefers-reduced-motion:reduce){.sp-art img,.sp-sock,.sp-lit,.sp-fill b{animation:none}.sp-fill{animation:none;width:88%}#splash{transition:none}}
+@media (prefers-reduced-motion:reduce){.sp-enter span{animation:none}.sp-art img,.sp-sock,.sp-lit,.sp-fill b{animation:none}.sp-fill{animation:none;width:88%}#splash{transition:none}}
 </style>
-<div id="splash" role="status" aria-label="Charm Master is loading">
+<div id="splash" role="dialog" aria-label="Charm Master">
   <div class="sp-art"><img src="splash.jpg" alt=""></div>
   <div class="sp-shade"></div><div class="sp-vig"></div>
   <div class="sp-title"><div class="sp-eye">ENTER THE REALM OF</div><div class="sp-gold">CHARM MASTER</div></div>
@@ -124,6 +131,7 @@
     <div class="sp-load">
       <div class="sp-ltxt">LOADING…</div>
       <div class="sp-bar"><div class="sp-track"><div class="sp-fill" id="sp-fill"><b></b></div></div></div>
+      <button type="button" class="sp-enter" id="sp-enter" tabindex="-1"><span>ENTER THE REALM</span></button>
     </div>
     <div class="sp-tip">Eight charms, all equally rare.<span> Collect a full set before the round ends.</span></div>
   </div>
@@ -141,11 +149,23 @@
       '<svg class="sp-lit" viewBox="0 0 100 100" aria-hidden="true" style="animation-delay:' + d + ';filter:drop-shadow(0 0 7px ' + c[1] + ')"><use href="#c-' + c[0] + '"/></svg></div></div>';
   });
   g.innerHTML = h;
-  function end() {
-    if (ended) return; ended = true;
-    document.getElementById('sp-fill').classList.add('sp-done');
-    setTimeout(function () { el.classList.add('sp-out'); setTimeout(function () { if (el.parentNode) el.parentNode.removeChild(el); }, 800); }, 380);
+  var ready = false;
+  function onKey(e) { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); enter(); } }
+  function enter() {
+    if (!ready || ended) return; ended = true;
+    el.classList.add('sp-out'); setTimeout(function () { if (el.parentNode) el.parentNode.removeChild(el); }, 800);
+    document.removeEventListener('keydown', onKey);
   }
+  function end() {
+    if (ready) return; ready = true;
+    document.getElementById('sp-fill').classList.add('sp-done');
+    setTimeout(function () {
+      el.classList.add('sp-ready');
+      var b = document.getElementById('sp-enter'); b.tabIndex = 0; try { b.focus({ preventScroll: true }); } catch (e) {}
+    }, 380);
+  }
+  el.addEventListener('click', enter);
+  document.addEventListener('keydown', onKey);
   window.__splashDone = function () { var w = Math.max(0, MIN - (Date.now() - t0)); setTimeout(end, w); window.__splashDone = function () {}; };
   setTimeout(end, MAX);
 })();
