@@ -15,7 +15,14 @@ service cloud.firestore {
     }
     match /_config/{id} { allow read, write: if signedIn(); }
   match /_leases/{id} { allow read, write: if signedIn(); }
-    // Quests: a registry of quests, plus one set of collections per quest, named "<questId>~people" and so on.
+    // Guilds: a registry of guilds, plus one set of collections per guild, named "<guildId>~people" and so on.
+    match /guilds/{id} {
+      allow read: if signedIn();
+      allow delete: if signedIn();
+      allow create, update: if signedIn() && request.resource.data.name is string
+        && request.resource.data.name.size() >= 3 && request.resource.data.name.size() <= 40;
+    }
+    // "quests" is kept only while the guild registry is copied across, and will be reused later for limited-time objectives.
     match /quests/{id} {
       allow read: if signedIn();
       allow delete: if signedIn();
