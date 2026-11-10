@@ -772,6 +772,17 @@ textarea.field { resize: vertical; min-height: 110px; }
   .bar .brand svg { width: 34px; height: 37px; }
   .bar .brand .gtext { font-size: 17px; letter-spacing: 0.06em; }
   .bar .gutter { gap: 8px 10px; }
+  /* quests screen: same compact panels as the other phone screens */
+  #v-quests > div { gap: 16px !important; }
+  #v-quests .gate { padding: 16px; gap: 12px; }
+  #v-quests .gate h1, #v-quests .gate h2 { font-size: 26px; line-height: 1.15; }
+  #v-quests .gate p { font-size: 15px; line-height: 1.5; }
+  #v-quests .eyebrow { font-size: 12px; }
+  .qitem .lbrow { padding: 12px; gap: 8px 10px; }
+  .qitem .lbname { flex: 1 1 100%; }
+  .qitem .lbrow > div[style*="margin-left"] { flex: 1 1 100%; margin-left: 0 !important; }
+  .qitem .lbrow .btn2 { width: 100%; min-height: 44px; }
+  #v-quests .inline-form .btn { width: 100%; }
 }
 /* ---- arrivals overlay ---- */
 .arrive { position: fixed; inset: 0; z-index: 80; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px; text-align: center; padding: 24px 20px calc(24px + env(safe-area-inset-bottom, 0px)); overflow-y: auto; background: radial-gradient(ellipse at 50% 30%, #2a1a5c, #0a0614 72%); }
@@ -1596,7 +1607,7 @@ footer.ground .gutter { align-items: center; row-gap: 8px; }
       $('tabs').innerHTML = ''; $('help').hidden = true; $('snd').hidden = true;
       return;
     }
-    if (qv) {
+    if (qv && !(QID && me())) {
       ['v-gate', 'v-card', 'v-home', 'v-grant', 'v-admin', 'v-trade', 'v-guide'].forEach(function (i) { $(i).hidden = true; });
       $('tabs').innerHTML = ''; $('help').hidden = true; $('snd').hidden = true;
       renderQuests(); return;
@@ -1607,6 +1618,7 @@ footer.ground .gutter { align-items: center; row-gap: 8px; }
     }
     watchCard();
     var m = me(), r = route();
+    if (qv) r = 'quests';
     $('round-pill').innerHTML = CUR_SHORT + '<span class="pl-d"> · ' +
       (DAYS_LEFT === 0 ? 'last day' : DAYS_LEFT === 1 ? '1 day left' : DAYS_LEFT + ' days left') + '</span><span class="pl-m"> · ' + DAYS_LEFT + 'd</span>';
     $('round-pill').parentNode.title = CUR_LONG + ' round';
@@ -1649,6 +1661,7 @@ footer.ground .gutter { align-items: center; row-gap: 8px; }
       var short = t[0] === 'card' ? 'Profile' : t[1];
       return '<a class="tab ' + (t[3] || '') + '" href="#' + (t[2] || t[0]) + '"' + (t[0] === r ? ' aria-current="page"' : '') + '><svg class="ti" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="' + (ICONS[t[0]] || '') + '"/></svg><span class="tl">' + (t[0] === 'card' ? '<span class="dlong">My </span>' : '') + short + '</span>' + dot + '</a>';
     }).join('') : '';
+    if (qv) renderQuests();
     if (!m) renderGate();
     else if (r === 'trade') renderTrade(m);
     else if (r === 'guide') renderGuide();
