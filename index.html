@@ -149,7 +149,8 @@
       '<svg class="sp-lit" viewBox="0 0 100 100" aria-hidden="true" style="animation-delay:' + d + ';filter:drop-shadow(0 0 7px ' + c[1] + ')"><use href="#c-' + c[0] + '"/></svg></div></div>';
   });
   g.innerHTML = h;
-  var ready = false;
+  var ready = false, seen = false;
+  try { seen = sessionStorage.getItem('cm-splash') === '1'; } catch (e) {}
   function onKey(e) { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); enter(); } }
   function enter() {
     if (!ready || ended) return; ended = true;
@@ -159,6 +160,10 @@
   function end() {
     if (ready) return; ready = true;
     document.getElementById('sp-fill').classList.add('sp-done');
+    if (seen) { // loading screen: no interaction, closes by itself
+      setTimeout(function () { enter(); }, 380); return;
+    }
+    try { sessionStorage.setItem('cm-splash', '1'); } catch (e) {}
     setTimeout(function () {
       el.classList.add('sp-ready');
       var b = document.getElementById('sp-enter'); b.tabIndex = 0; try { b.focus({ preventScroll: true }); } catch (e) {}
