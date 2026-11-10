@@ -931,6 +931,8 @@ body.stage-live { overflow: hidden; }
   .lbrow .gem { width: 10px; height: 10px; border-width: 1.5px; }
   .lbrow .lbscore { grid-area: score; order: 0; }
   .lbrow .lbscore strong { font-size: 18px; }
+  .lbrow.genrow .lbname { flex-direction: column; align-items: flex-start; gap: 0; }
+  .lbrow.genrow .gl { display: none; }
   .lbrow .lbscore span { font-size: 11px; white-space: nowrap; }
   .lbrow:not(:has(.gems)) { grid-template-areas: "rank av name score"; }
 }
@@ -1922,12 +1924,12 @@ footer.ground .gutter { align-items: center; row-gap: 8px; }
     $('gen-month').textContent = CUR_LONG;
     var genHtml = gen.length ? gen.slice(0, 5).map(function (r) {
       var you = r.p.id === m.id, sets = (S.cards[r.p.id] || {}).sets || 0;
-      return '<div class="lbrow' + (you ? ' you' : '') + (r.rank === 1 ? ' first' : '') + '">' +
+      return '<div class="lbrow genrow' + (you ? ' you' : '') + (r.rank === 1 ? ' first' : '') + '">' +
         '<div class="rank">' + r.rank + '</div>' +
         '<div class="lbav">' + avatar(rankIdx(sets)) + '</div>' +
         '<div class="lbname"><div class="nm"><span class="t">' + esc(r.p.name) + '</span>' + (you ? '<span class="youtag">You</span>' : '') + '</div>' +
         '<span class="rtitle">' + esc(rankFor(sets).name) + '</span></div>' +
-        '<div class="lbscore" style="margin-left:auto"><strong>' + r.n + '</strong><span>' + (r.n === 1 ? 'charm granted' : 'charms granted') + '</span></div></div>';
+        '<div class="lbscore" style="margin-left:auto"><strong>' + r.n + '</strong><span><span class="gl">' + (r.n === 1 ? 'charm ' : 'charms ') + '</span>granted</span></div></div>';
     }).join('') : '<p class="empty-note">No charms have been granted in ' + esc(CUR_NAME) + ' yet. The first person to recognise a teammate takes the lead.</p>';
     if (genHtml !== genLast) { genLast = genHtml; $('gen').innerHTML = genHtml; }
     // Recent deeds: every grant the giver chose to share, newest first.
