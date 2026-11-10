@@ -797,7 +797,7 @@ textarea.field { resize: vertical; min-height: 110px; }
   .bar .brand svg { width: 34px; height: 37px; }
   .bar .brand .gtext { font-size: 17px; letter-spacing: 0.06em; }
   .bar .gutter { gap: 8px 10px; }
-  /* quests screen: same compact panels as the other phone screens */
+  /* guilds screen: same compact panels as the other phone screens */
   #v-quests > div { gap: 16px !important; }
   #v-quests .gate { padding: 16px; gap: 12px; }
   #v-quests .gate h1, #v-quests .gate h2 { font-size: 26px; line-height: 1.15; }
@@ -1075,7 +1075,7 @@ footer.ground .gutter { align-items: center; row-gap: 8px; }
       </a>
       <nav class="tabs" id="tabs" aria-label="Main"></nav>
       <div class="right">
-      <a class="pill qpill" id="qbtn" href="#quests" title="Switch quest"></a>
+      <a class="pill qpill" id="qbtn" href="#quests" title="Switch guild"></a>
       <div class="pill">
         <svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><path d="M9.5 1.5 A6.5 6.5 0 1 0 14.5 10 A5 5 0 1 1 9.5 1.5Z" fill="#7cc0ff"/></svg>
         <span id="round-pill">This month's round</span>
@@ -1264,7 +1264,7 @@ footer.ground .gutter { align-items: center; row-gap: 8px; }
 
   <div class="gutter view" id="v-gate">
     <section class="panel gate">
-      <a class="linkbtn gate-back" href="#quests" style="align-self:flex-start; display:inline-flex; align-items:center; min-height:44px; margin: -8px 0 0 -4px">&larr; All quests</a>
+      <a class="linkbtn gate-back" href="#quests" style="align-self:flex-start; display:inline-flex; align-items:center; min-height:44px; margin: -8px 0 0 -4px">&larr; All guilds</a>
       <div class="eyebrow">Charm Master · <span id="gate-round"></span></div>
       <h1 class="gtext">Who Goes There?</h1>
       <p class="muted" id="gate-copy">Gathering the roster…</p>
@@ -1282,11 +1282,11 @@ footer.ground .gutter { align-items: center; row-gap: 8px; }
         <li>Your name, as you typed it, and whether you are an admin or a member.</li>
         <li>A scrambled (salted hash) copy of your six-digit passcode. The passcode itself is never stored.</li>
         <li>The charms you give and receive, with the reasons the giver wrote, and your swap offers on the Open Market.</li>
-        <li>Quest details: the quest name, a scrambled copy of the quest password, and a scrambled copy of the quest's admin PIN.</li>
+        <li>Guild details: the guild name, a scrambled copy of the guild password, and a scrambled copy of the guild's admin PIN.</li>
       </ul>
       <p class="muted">It does not collect email addresses, phone numbers, locations, payment details or photos. There is no advertising and no analytics or tracking.</p>
       <h2>What is kept on your device</h2>
-      <p class="muted">Small items in your browser's own storage so the app works: who you are in each quest you have joined, your sound setting, the quests you have joined, and counters that lock sign-in after too many wrong tries. Firebase also keeps a random anonymous identifier on your device, which the database needs to accept your requests. These are essential to the service and are not used to track you. You can clear them any time in your browser settings, which signs you out.</p>
+      <p class="muted">Small items in your browser's own storage so the app works: who you are in each guild you have joined, your sound setting, the guilds you have joined, and counters that lock sign-in after too many wrong tries. Firebase also keeps a random anonymous identifier on your device, which the database needs to accept your requests. These are essential to the service and are not used to track you. You can clear them any time in your browser settings, which signs you out.</p>
       <h2>Where it lives</h2>
       <ul>
         <li><strong>Database:</strong> Google Firebase (Firestore), in London (europe-west2).</li>
@@ -1295,12 +1295,12 @@ footer.ground .gutter { align-items: center; row-gap: 8px; }
       </ul>
       <p class="muted">Because the data is stored in the UK, UK data protection rules apply to how it is handled, including when you use it from another country.</p>
       <h2>Who can see it</h2>
-      <p class="muted">Anyone who has the link can see the names of people in a quest, and signed-in members can see the charms and reasons. The passcode and PIN checks stop casual misuse, not a determined technical person, so please do not write anything sensitive in a charm reason.</p>
+      <p class="muted">Anyone who has the link can see the names of people in a guild, and signed-in members can see the charms and reasons. The passcode and PIN checks stop casual misuse, not a determined technical person, so please do not write anything sensitive in a charm reason.</p>
       <h2>Keeping and deleting your data</h2>
       <ul>
-        <li>Data stays until it is removed. Admins can remove a person (their record, bracelets and open swap offers), wipe a month, or delete a whole quest.</li>
+        <li>Data stays until it is removed. Admins can remove a person (their record, bracelets and open swap offers), wipe a month, or delete a whole guild.</li>
         <li>If you are removed, charms you gave or received stay in other people's history, shown as from or to "A teammate". If you need those deleted as well, ask and they can be.</li>
-        <li>To see, correct or delete your data, ask the admin of your quest, or the person who runs Charm Master, and they will deal with it.</li>
+        <li>To see, correct or delete your data, ask the admin of your guild, or the person who runs Charm Master, and they will deal with it.</li>
       </ul>
       <h2>Who it is for</h2>
       <p class="muted">Charm Master is meant for adults taking part in a team recognition game, with their agreement.</p>
@@ -1312,21 +1312,21 @@ footer.ground .gutter { align-items: center; row-gap: 8px; }
     <div style="display:flex; flex-direction:column; gap:24px">
     <section class="panel gate">
       <div class="eyebrow">Charm Master</div>
-      <h1 class="gtext">Quests</h1>
-      <p class="muted" id="q-copy">Each quest is its own group, with its own roster, admin and progress. Pick one to join with its password, or start your own below.</p>
-      <label class="sr" for="q-search">Search quests</label>
-      <input id="q-search" class="field" type="search" maxlength="40" placeholder="Search quests by name" autocomplete="off">
-      <label class="muted" style="display:flex; align-items:center; gap:8px; font-size:14px"><input type="checkbox" id="q-ret"> Show retired quests</label>
+      <h1 class="gtext">Guilds</h1>
+      <p class="muted" id="q-copy">Each guild is its own group, with its own roster, admin and progress. Pick one to join with its password, or start your own below.</p>
+      <label class="sr" for="q-search">Search guilds</label>
+      <input id="q-search" class="field" type="search" maxlength="40" placeholder="Search guilds by name" autocomplete="off">
+      <label class="muted" style="display:flex; align-items:center; gap:8px; font-size:14px"><input type="checkbox" id="q-ret"> Show retired guilds</label>
       <div id="q-list" style="display:flex; flex-direction:column; gap:10px"></div>
     </section>
     <section class="panel gate">
-      <h2 class="gtext">Start a new quest</h2>
-      <p class="muted">You become its admin and choose its admin PIN when you sign in. Share the quest name and password with the people you want to join.</p>
+      <h2 class="gtext">Start a new guild</h2>
+      <p class="muted">You become its admin and choose its admin PIN when you sign in. Share the guild name and password with the people you want to join.</p>
       <form id="q-new" class="inline-form" autocomplete="off">
-        <label class="sr" for="qn-name">Quest name</label><input id="qn-name" class="field" type="text" maxlength="40" placeholder="Quest name" required>
-        <label class="sr" for="qn-pass">Quest password</label><input id="qn-pass" class="field" type="password" maxlength="40" placeholder="Quest password (4+ characters)" autocomplete="off" required>
-        <label class="sr" for="qn-pass2">Repeat the quest password</label><input id="qn-pass2" class="field" type="password" maxlength="40" placeholder="Repeat password" autocomplete="off" required>
-        <button type="submit" class="btn">Create quest</button>
+        <label class="sr" for="qn-name">Guild name</label><input id="qn-name" class="field" type="text" maxlength="40" placeholder="Guild name" required>
+        <label class="sr" for="qn-pass">Guild password</label><input id="qn-pass" class="field" type="password" maxlength="40" placeholder="Guild password (4+ characters)" autocomplete="off" required>
+        <label class="sr" for="qn-pass2">Repeat the guild password</label><input id="qn-pass2" class="field" type="password" maxlength="40" placeholder="Repeat password" autocomplete="off" required>
+        <button type="submit" class="btn">Create guild</button>
       </form>
       <div class="msg bad" id="q-newmsg" role="alert"></div>
     </section>
@@ -1366,13 +1366,13 @@ footer.ground .gutter { align-items: center; row-gap: 8px; }
     <section class="panel roster danger" id="wipe-panel" style="margin-top:28px">
       <div class="eyebrow">Start again</div>
       <h2 class="gtext" style="font-size:28px; margin:0" id="wipe-title">Wipe progress</h2>
-      <p class="muted">Clears every bracelet, rank, granted charm and swap offer for <span id="wipe-round"></span> in this quest only, so the round starts fresh. Other quests and other months are not touched, and the roster stays exactly as it is. This cannot be undone.</p>
+      <p class="muted">Clears every bracelet, rank, granted charm and swap offer for <span id="wipe-round"></span> in this guild only, so the round starts fresh. Other guilds and other months are not touched, and the roster stays exactly as it is. This cannot be undone.</p>
       <div id="wipe-body" style="display:flex; flex-direction:column; gap:16px"></div>
       <div class="msg" id="wipe-msg" role="status" aria-live="polite"></div>
     </section>
     <section class="panel roster danger" id="quest-panel" style="margin-top:28px" hidden>
-      <div class="eyebrow">This quest</div>
-      <h2 class="gtext" style="font-size:28px; margin:0">Retire or delete this quest</h2>
+      <div class="eyebrow">This guild</div>
+      <h2 class="gtext" style="font-size:28px; margin:0">Retire or delete this guild</h2>
       <p class="muted" id="qa-desc"></p>
       <div id="qa-body" style="display:flex; flex-direction:column; gap:16px"></div>
       <div class="msg" id="qa-msg" role="status" aria-live="polite"></div>
@@ -1552,7 +1552,7 @@ footer.ground .gutter { align-items: center; row-gap: 8px; }
   var DAYS_LEFT = new Date(T.y, T.m, 0).getDate() - T.d;
 
   // Remembering who you are on this device is a per-viewer convenience only.
-  // ---- quests: each quest keeps its own people, cards, trades, grants and admin PIN under a prefixed set of collections ----
+  // ---- quests: each guild keeps its own people, cards, trades, grants and admin PIN under a prefixed set of collections ----
   function lsGet(k) { try { return localStorage.getItem(k); } catch (e) { return null; } }
   var QID = lsGet('charm-master.quest') || (lsGet('charm-chart.me') ? 'main' : '');
   var QP = (QID && QID !== 'main') ? QID + '~' : '';
@@ -1625,7 +1625,7 @@ footer.ground .gutter { align-items: center; row-gap: 8px; }
   // ---- views ----
   function questName(id) {
     var q = S.qs.list.filter(function (x) { return x.id === id; })[0];
-    return q ? q.name : (id === 'main' ? 'Original Quest' : 'Quest');
+    return q ? q.name : (id === 'main' ? 'Original Guild' : 'Guild');
   }
   function setPill() {
     $('round-pill').innerHTML = CUR_SHORT + '<span class="pl-d"> · ' +
@@ -1638,7 +1638,7 @@ footer.ground .gutter { align-items: center; row-gap: 8px; }
     var pv = location.hash === '#privacy';
     $('v-privacy').hidden = !pv;
     var qv = !pv && (!QID || location.hash === '#quests');
-    $('qbtn').textContent = QID ? 'Quest: ' + questName(QID) : 'Choose a quest';
+    $('qbtn').textContent = QID ? 'Guild: ' + questName(QID) : 'Choose a guild';
     $('v-quests').hidden = !qv;
     if (pv) {
       ['v-gate', 'v-card', 'v-home', 'v-grant', 'v-admin', 'v-trade', 'v-guide', 'v-quests'].forEach(function (i) { $(i).hidden = true; });
@@ -1680,7 +1680,7 @@ footer.ground .gutter { align-items: center; row-gap: 8px; }
     document.body.setAttribute('data-route', m ? r : '');
     var brand = document.querySelector('.brand');
     if (m && r === 'home') brand.setAttribute('aria-current', 'page'); else brand.removeAttribute('aria-current');
-    var tabs = [['home', 'Home', 'home', 'mobonly'], ['card', 'My Profile', 'profile'], ['grant', 'Grant'], ['trade', 'Trade'], ['guide', 'Guide', 'guide', 'deskonly'], ['quests', 'Quests']];
+    var tabs = [['home', 'Home', 'home', 'mobonly'], ['card', 'My Profile', 'profile'], ['grant', 'Grant'], ['trade', 'Trade'], ['guide', 'Guide', 'guide', 'deskonly'], ['quests', 'Guilds']];
     if (m && m.role === 'admin') tabs.push(['admin', 'Admin']);
     var ICONS = {
       home: 'M3 11l9-8 9 8M5 10v10h5v-6h4v6h5V10',
@@ -3207,7 +3207,7 @@ footer.ground .gutter { align-items: center; row-gap: 8px; }
   });
   setInterval(function () { if (me() && route() === 'trade') render(); }, 60000);
 
-  // ---- Retire / delete this quest (admin page) ----
+  // ---- Retire / delete this guild (admin page) ----
   var QA = { step: '', busy: false, msg: '', bad: false, nm: '' }, qaSig = '';
   function curQuest() { return QID && QID !== 'main' ? S.qs.list.filter(function (x) { return x.id === QID; })[0] : null; }
   function qaSay(t, bad) { QA.msg = t; QA.bad = !!bad; qaSig = ''; render(); }
@@ -3219,16 +3219,16 @@ footer.ground .gutter { align-items: center; row-gap: 8px; }
     if (sig === qaSig) return;
     qaSig = sig;
     $('qa-desc').textContent = q.retired
-      ? q.name + ' is retired. It is hidden from the Quests list (unless "Show retired quests" is ticked) but nothing has been lost. Restore it any time, or delete it for good.'
-      : 'Retire hides ' + q.name + ' from the Quests list but keeps everything, and you can restore it later. Delete removes its roster, charms, trades and history for good.';
+      ? q.name + ' is retired. It is hidden from the Guilds list (unless "Show retired guilds" is ticked) but nothing has been lost. Restore it any time, or delete it for good.'
+      : 'Retire hides ' + q.name + ' from the Guilds list but keeps everything, and you can restore it later. Delete removes its roster, charms, trades and history for good.';
     var pinf = '<label class="sr" for="qa-pin">Admin PIN</label><input id="qa-pin" class="field" type="password" inputmode="numeric" pattern="[0-9]*" maxlength="4" placeholder="Admin PIN" autocomplete="off" style="max-width:160px">';
     var b = '';
-    if (QA.step === 'retire') b = '<form class="inline-form" data-qa="retire-go">' + pinf + '<button type="submit" class="btn"' + (QA.busy ? ' disabled' : '') + '>Retire quest</button><button type="button" class="btn2" data-qa="cancel">Cancel</button></form>';
-    else if (QA.step === 'delete') b = '<div class="tnote">This deletes everyone on the roster, all bracelets, grants and swaps in <strong>' + esc(q.name) + '</strong>, and the quest itself. It cannot be undone.</div>' +
-      '<form class="inline-form" data-qa="delete-go"><label class="sr" for="qa-name">Type the quest name to confirm</label><input id="qa-name" class="field" type="text" maxlength="40" placeholder="Type the quest name to confirm" autocomplete="off" value="' + esc(QA.nm || '') + '">' + pinf +
+    if (QA.step === 'retire') b = '<form class="inline-form" data-qa="retire-go">' + pinf + '<button type="submit" class="btn"' + (QA.busy ? ' disabled' : '') + '>Retire guild</button><button type="button" class="btn2" data-qa="cancel">Cancel</button></form>';
+    else if (QA.step === 'delete') b = '<div class="tnote">This deletes everyone on the roster, all bracelets, grants and swaps in <strong>' + esc(q.name) + '</strong>, and the guild itself. It cannot be undone.</div>' +
+      '<form class="inline-form" data-qa="delete-go"><label class="sr" for="qa-name">Type the guild name to confirm</label><input id="qa-name" class="field" type="text" maxlength="40" placeholder="Type the guild name to confirm" autocomplete="off" value="' + esc(QA.nm || '') + '">' + pinf +
       '<button type="submit" class="btn"' + (QA.busy ? ' disabled' : '') + '>Delete forever</button><button type="button" class="btn2" data-qa="cancel">Cancel</button></form>';
-    else b = '<div class="reqbtns">' + (q.retired ? '<button type="button" class="btn2" data-qa="restore"' + (QA.busy ? ' disabled' : '') + '>Restore quest</button>' : '<button type="button" class="btn2" data-qa="retire">Retire quest</button>') +
-      '<button type="button" class="btn2" data-qa="delete">Delete quest…</button></div>';
+    else b = '<div class="reqbtns">' + (q.retired ? '<button type="button" class="btn2" data-qa="restore"' + (QA.busy ? ' disabled' : '') + '>Restore guild</button>' : '<button type="button" class="btn2" data-qa="retire">Retire guild</button>') +
+      '<button type="button" class="btn2" data-qa="delete">Delete guild…</button></div>';
     $('qa-body').innerHTML = b;
     $('qa-msg').textContent = QA.msg; $('qa-msg').className = 'msg' + (QA.bad ? ' bad' : '');
   }
@@ -3244,7 +3244,7 @@ footer.ground .gutter { align-items: center; row-gap: 8px; }
     if (a === 'cancel') { QA.step = ''; QA.msg = ''; qaSig = ''; render(); return; }
     if (a === 'restore') {
       QA.busy = true; qaSig = ''; render();
-      S.raw.doc('quests/' + QID).update({ retired: false }).then(function () { QA.busy = false; qaSay('Restored. ' + (curQuest() || {}).name + ' is back on the Quests list.'); },
+      S.raw.doc('quests/' + QID).update({ retired: false }).then(function () { QA.busy = false; qaSay('Restored. ' + (curQuest() || {}).name + ' is back on the Guilds list.'); },
         function () { QA.busy = false; qaSay('That could not be saved. Try again.', true); });
     }
   });
@@ -3255,7 +3255,7 @@ footer.ground .gutter { align-items: center; row-gap: 8px; }
     var a = f.getAttribute('data-qa'), pin = f.querySelector('#qa-pin').value, k = 'charm-master.qadminfail' + SFX;
     var left = lockLeftK(k);
     if (left) { qaSay('Too many wrong tries. Try again in ' + left + ' minute' + (left === 1 ? '' : 's') + '.', true); return; }
-    if (a === 'delete-go' && f.querySelector('#qa-name').value.trim().toLowerCase() !== q.name.toLowerCase()) { qaSay('Type the quest name exactly to confirm.', true); return; }
+    if (a === 'delete-go' && f.querySelector('#qa-name').value.trim().toLowerCase() !== q.name.toLowerCase()) { qaSay('Type the guild name exactly to confirm.', true); return; }
     QA.busy = true; qaSig = ''; render();
     checkPin(pin).then(function (ok) {
       if (!ok) { failedK(k); QA.busy = false; qaSay('That is not the admin PIN.', true); return; }
@@ -3274,7 +3274,7 @@ footer.ground .gutter { align-items: center; row-gap: 8px; }
 
   $('feed-more').addEventListener('click', function (e) { if (e.target.closest('button[data-act="feed-more"]')) { feedN += 10; render(); } });
 
-  // ---- Quests page ----
+  // ---- Guilds page ----
   function joinedMap() { try { return JSON.parse(lsGet('charm-master.joined') || '{}') || {}; } catch (e) { return {}; } }
   function markJoined(id) { var j = joinedMap(); j[id] = 1; try { localStorage.setItem('charm-master.joined', JSON.stringify(j)); } catch (e) {} }
   function enterQuest(id) {
@@ -3290,21 +3290,21 @@ footer.ground .gutter { align-items: center; row-gap: 8px; }
     qSig = sig;
     var el = $('q-list');
     $('q-new').style.display = S.nodb ? 'none' : '';
-    if (S.nodb) { el.innerHTML = '<p class="muted">Saved data is not available in this view, so quests cannot load.</p>'; return; }
-    if (!Q.ready) { el.innerHTML = '<p class="muted">Gathering the quests…</p>'; return; }
+    if (S.nodb) { el.innerHTML = '<p class="muted">Saved data is not available in this view, so guilds cannot load.</p>'; return; }
+    if (!Q.ready) { el.innerHTML = '<p class="muted">Gathering the guilds…</p>'; return; }
     var rows = Q.list.filter(function (x) { return (Q.showRet || !x.retired || x.id === QID) && (!term || x.name.toLowerCase().indexOf(term) >= 0); });
-    if (!rows.length) { el.innerHTML = '<p class="muted">' + (Q.list.length ? 'No quest matches that search.' : 'No quests yet. Start the first one below.') + '</p>'; return; }
+    if (!rows.length) { el.innerHTML = '<p class="muted">' + (Q.list.length ? 'No guild matches that search.' : 'No guilds yet. Start the first one below.') + '</p>'; return; }
     el.innerHTML = rows.map(function (x) {
       var cur = x.id === QID, joined = !!j[x.id] || cur;
       var d = x.createdAt ? new Date(x.createdAt) : null;
-      var sub = x.nopass ? 'The original group' : (d && !isNaN(d) ? 'Started ' + d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : 'Quest');
-      var btn = cur ? '<button type="button" class="btn2" data-qact="enter" data-q="' + esc(x.id) + '">Back to quest</button>'
+      var sub = x.nopass ? 'The original group' : (d && !isNaN(d) ? 'Started ' + d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : 'Guild');
+      var btn = cur ? '<button type="button" class="btn2" data-qact="enter" data-q="' + esc(x.id) + '">Back to guild</button>'
         : joined || x.nopass ? '<button type="button" class="btn2" data-qact="enter" data-q="' + esc(x.id) + '">Enter</button>'
         : '<button type="button" class="btn2" data-qact="join" data-q="' + esc(x.id) + '">Join</button>';
       var form = (Q.open === x.id && !joined && !x.nopass) ?
         '<form class="inline-form qform" data-qform="' + esc(x.id) + '" autocomplete="off"><label class="sr" for="qp-' + esc(x.id) + '">Password for ' + esc(x.name) + '</label>' +
-        '<input id="qp-' + esc(x.id) + '" class="field" type="password" maxlength="40" placeholder="Quest password" autocomplete="off" required>' +
-        '<button type="submit" class="btn"' + (Q.busy ? ' disabled' : '') + '>Enter quest</button>' +
+        '<input id="qp-' + esc(x.id) + '" class="field" type="password" maxlength="40" placeholder="Guild password" autocomplete="off" required>' +
+        '<button type="submit" class="btn"' + (Q.busy ? ' disabled' : '') + '>Enter guild</button>' +
         (Q.msg ? '<div class="msg bad" role="alert" style="flex-basis:100%">' + esc(Q.msg) + '</div>' : '') + '</form>' : '';
       return '<div class="qitem"><div class="lbrow' + (cur ? ' you' : '') + '"><div class="lbname"><div class="nm"><span class="t">' + esc(x.name) + '</span>' +
         (x.retired ? '<span class="qtag" style="color:#ffb27a;border-color:#8a5a2f">Retired</span>' : '') + (cur ? '<span class="youtag">Current</span>' : joined ? '<span class="qtag">Joined</span>' : '') + '</div><span class="rtitle">' + esc(sub) + '</span></div>' +
@@ -3332,15 +3332,15 @@ footer.ground .gutter { align-items: center; row-gap: 8px; }
       S.qs.busy = false;
       if (h === q.pass.hash) { passedK(k); enterQuest(id); return; }
       failedK(k); var l2 = lockLeftK(k);
-      S.qs.msg = l2 ? 'Too many wrong tries. Try again in ' + l2 + ' minutes.' : 'That is not the password for this quest.'; render();
+      S.qs.msg = l2 ? 'Too many wrong tries. Try again in ' + l2 + ' minutes.' : 'That is not the password for this guild.'; render();
     });
   });
   $('q-new').addEventListener('submit', function (e) {
     e.preventDefault();
     var nm = $('qn-name').value.trim().replace(/\s+/g, ' '), p1 = $('qn-pass').value, p2 = $('qn-pass2').value, m = $('q-newmsg'), btn = e.target.querySelector('button');
-    if (nm.length < 3) { m.textContent = 'Give the quest a name of at least three characters.'; return; }
-    if (S.qs.list.some(function (x) { return x.name.toLowerCase() === nm.toLowerCase(); })) { m.textContent = 'A quest with that name already exists. Choose another name.'; return; }
-    if (p1.length < 4) { m.textContent = 'The quest password needs at least four characters.'; return; }
+    if (nm.length < 3) { m.textContent = 'Give the guild a name of at least three characters.'; return; }
+    if (S.qs.list.some(function (x) { return x.name.toLowerCase() === nm.toLowerCase(); })) { m.textContent = 'A guild with that name already exists. Choose another name.'; return; }
+    if (p1.length < 4) { m.textContent = 'The guild password needs at least four characters.'; return; }
     if (p1 !== p2) { m.textContent = 'The two passwords do not match.'; return; }
     if (!S.raw) { m.textContent = 'Saved data is not available right now.'; return; }
     m.textContent = ''; btn.disabled = true;
@@ -3360,14 +3360,14 @@ footer.ground .gutter { align-items: center; row-gap: 8px; }
     S.db = db;
     var legacy = false;
     function qlist(snap) {
-      var l = snap.docs.map(function (d) { var x = d.data() || {}; return { retired: !!x.retired, id: d.id, name: String(x.name || 'Quest'), createdAt: String(x.createdAt || ''), pass: (x.pass && typeof x.pass.salt === 'string' && typeof x.pass.hash === 'string') ? x.pass : null }; })
+      var l = snap.docs.map(function (d) { var x = d.data() || {}; return { retired: !!x.retired, id: d.id, name: String(x.name || 'Guild'), createdAt: String(x.createdAt || ''), pass: (x.pass && typeof x.pass.salt === 'string' && typeof x.pass.hash === 'string') ? x.pass : null }; })
         .filter(function (x) { return x.pass; });
-      if (legacy) l.push({ id: 'main', name: 'Original Quest', createdAt: '', pass: null, nopass: true });
+      if (legacy) l.push({ id: 'main', name: 'Original Guild', createdAt: '', pass: null, nopass: true });
       S.qs.list = l.sort(function (a, b) { return a.name.localeCompare(b.name); });
       S.qs.ready = true; render();
     }
     raw.collection('people').get().then(function (sn) { legacy = sn.docs.length > 0; }, function () {}).then(function () {
-      raw.collection('quests').onSnapshot(qlist, function () { S.qs.ready = true; S.qs.list = legacy ? [{ id: 'main', name: 'Original Quest', createdAt: '', pass: null, nopass: true }] : []; render(); });
+      raw.collection('quests').onSnapshot(qlist, function () { S.qs.ready = true; S.qs.list = legacy ? [{ id: 'main', name: 'Original Guild', createdAt: '', pass: null, nopass: true }] : []; render(); });
     });
     if (QID) {
     db.collection('cards').where('roundId', '==', CUR).onSnapshot(function (snap) {
